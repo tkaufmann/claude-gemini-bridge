@@ -187,6 +187,9 @@ cat > .claude/settings.json << 'EOF'
 }
 EOF
 
+# Ensure script is executable (usually not needed after git clone)
+chmod +x /Users/yourname/claude-gemini-bridge/hooks/gemini-bridge.sh
+
 # Create project-specific bridge configuration
 cat > .claude-gemini.conf << 'EOF'
 MIN_FILES_FOR_GEMINI=2
