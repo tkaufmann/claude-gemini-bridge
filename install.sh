@@ -1,5 +1,5 @@
 #!/bin/bash
-# ABOUTME: Fully automated installer for Claude-Gemini Bridge
+# ABOUTME: Simplified installer for Claude-Gemini Bridge that works in current directory
 
 echo "🚀 Claude-Gemini Bridge Installer"
 echo "=================================="
@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Global variables
-INSTALL_DIR="${CLAUDE_GEMINI_BRIDGE_DIR:-$HOME/.claude-gemini-bridge}"
-CLAUDE_SETTINGS_FILE="$HOME/.claude/settings.local.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAUDE_SETTINGS_FILE="$HOME/.claude/settings.json"
 BACKUP_SUFFIX=$(date +%Y%m%d_%H%M%S)
 
 # Log function
@@ -35,7 +35,7 @@ error_exit() {
     log "error" "$1"
     echo ""
     echo "💥 Installation aborted!"
-    echo "For help see: $INSTALL_DIR/docs/TROUBLESHOOTING.md"
+    echo "For help see: $SCRIPT_DIR/docs/TROUBLESHOOTING.md"
     exit 1
 }
 
@@ -64,67 +64,20 @@ check_requirements() {
     fi
     log "debug" "jq found: $(which jq)"
     
-    # bc for calculations (optional)
-    if ! command -v bc &> /dev/null; then
-        log "warn" "bc not found (optional). Performance measurements might not work."
-    fi
-    
     log "info" "All prerequisites met"
 }
 
-# Check if already installed
-check_existing_installation() {
-    if [ -d "$INSTALL_DIR" ]; then
-        log "warn" "Existing installation found in: $INSTALL_DIR"
-        echo ""
-        read -p "Do you want to overwrite the existing installation? (y/N): " overwrite
-        
-        if [[ "$overwrite" =~ ^[Yy]$ ]]; then
-            log "info" "Creating backup of existing installation..."
-            mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.${BACKUP_SUFFIX}"
-            log "info" "Backup created: ${INSTALL_DIR}.backup.${BACKUP_SUFFIX}"
-        else
-            log "info" "Installation cancelled. Use existing installation or remove it manually."
-            exit 0
-        fi
-    fi
-}
-
-# Create directory structure
+# Create directory structure if needed
 create_directories() {
     log "info" "Creating directory structure..."
     
-    mkdir -p "$INSTALL_DIR"/{hooks/{lib,config},cache/gemini,logs/debug,test/mock-tool-calls,debug/captured,docs}
+    mkdir -p "$SCRIPT_DIR"/{cache/gemini,logs/debug,debug/captured}
     
     if [ $? -eq 0 ]; then
-        log "info" "Directory structure created"
+        log "info" "Directory structure ready"
     else
         error_exit "Error creating directory structure"
     fi
-}
-
-# Copy files to installation directory
-copy_files() {
-    log "info" "Copying files to installation directory..."
-    
-    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
-    # Copy all files except .git and temporary files
-    cp -r "$script_dir"/* "$INSTALL_DIR/" 2>/dev/null || true
-    
-    # Ensure we don't copy .git directory
-    rm -rf "$INSTALL_DIR/.git" 2>/dev/null || true
-    
-    # Verify critical files were copied
-    if [ ! -f "$INSTALL_DIR/hooks/gemini-bridge.sh" ]; then
-        error_exit "Failed to copy main hook script"
-    fi
-    
-    if [ ! -d "$INSTALL_DIR/hooks/lib" ]; then
-        error_exit "Failed to copy library files"
-    fi
-    
-    log "info" "Files copied successfully"
 }
 
 # Test Gemini connection
@@ -156,7 +109,7 @@ test_gemini_connection() {
     fi
 }
 
-# Configure Claude Code Hooks
+# Intelligent hook merging for settings.json
 configure_claude_hooks() {
     log "info" "Configuring Claude Code Hooks..."
     
@@ -169,42 +122,86 @@ configure_claude_hooks() {
         log "info" "Backup created: ${CLAUDE_SETTINGS_FILE}.backup.${BACKUP_SUFFIX}"
     fi
     
-    # Hook configuration
-    local hook_config='{
+    # Our hook configuration
+    local hook_command="$SCRIPT_DIR/hooks/gemini-bridge.sh"
+    local hook_matcher="Read|Grep|Glob|Task"
+    
+    # Check if we already have this hook
+    if [ -f "$CLAUDE_SETTINGS_FILE" ]; then
+        if grep -q "$hook_command" "$CLAUDE_SETTINGS_FILE" 2>/dev/null; then
+            log "info" "Hook already configured, updating path if needed..."
+            
+            # Update the command path using jq
+            local updated_config=$(jq --arg cmd "$hook_command" '
+                .hooks.PreToolUse = (.hooks.PreToolUse // []) | 
+                .hooks.PreToolUse |= map(
+                    if .hooks[]?.command? and (.hooks[]?.command | contains("gemini-bridge.sh"))
+                    then .hooks[0].command = $cmd
+                    else . end
+                )' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
+            
+            if [ $? -eq 0 ] && [ -n "$updated_config" ]; then
+                echo "$updated_config" > "$CLAUDE_SETTINGS_FILE"
+                log "info" "Hook path updated"
+            else
+                log "warn" "Could not update hook path automatically"
+            fi
+            return 0
+        fi
+    fi
+    
+    # Merge with existing configuration or create new
+    if [ -f "$CLAUDE_SETTINGS_FILE" ]; then
+        log "debug" "Merging with existing settings..."
+        
+        # Add our hook to existing PreToolUse array
+        local merged_config=$(jq --arg cmd "$hook_command" --arg matcher "$hook_matcher" '
+            .hooks.PreToolUse = (.hooks.PreToolUse // []) + [{
+                "matcher": $matcher,
+                "hooks": [{
+                    "type": "command",
+                    "command": $cmd
+                }]
+            }]' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
+        
+        if [ $? -eq 0 ] && [ -n "$merged_config" ]; then
+            echo "$merged_config" > "$CLAUDE_SETTINGS_FILE"
+            log "info" "Hook added to existing settings"
+        else
+            log "warn" "Error merging configuration. Creating new settings file."
+            create_new_settings_file "$hook_command" "$hook_matcher"
+        fi
+    else
+        log "debug" "Creating new settings file..."
+        create_new_settings_file "$hook_command" "$hook_matcher"
+    fi
+    
+    log "debug" "Hook configured: $hook_command"
+}
+
+# Create new settings file
+create_new_settings_file() {
+    local hook_command="$1"
+    local hook_matcher="$2"
+    
+    cat > "$CLAUDE_SETTINGS_FILE" << EOF
+{
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read|Grep|Glob|Task",
+        "matcher": "$hook_matcher",
         "hooks": [
           {
             "type": "command",
-            "command": "'$INSTALL_DIR'/hooks/gemini-bridge.sh"
+            "command": "$hook_command"
           }
         ]
       }
     ]
   }
-}'
-    
-    # Merge with existing settings or create new
-    if [ -f "$CLAUDE_SETTINGS_FILE" ]; then
-        # Merge with existing configuration
-        local merged_config=$(jq -s '.[0] * .[1]' "$CLAUDE_SETTINGS_FILE" <(echo "$hook_config") 2>/dev/null)
-        
-        if [ $? -eq 0 ] && [ -n "$merged_config" ]; then
-            echo "$merged_config" > "$CLAUDE_SETTINGS_FILE"
-            log "info" "Hook configuration added to existing settings"
-        else
-            log "warn" "Error merging configuration. Creating new settings file."
-            echo "$hook_config" > "$CLAUDE_SETTINGS_FILE"
-        fi
-    else
-        # Create new settings file
-        echo "$hook_config" > "$CLAUDE_SETTINGS_FILE"
-        log "info" "New Claude settings created"
-    fi
-    
-    log "debug" "Hook configured for: $INSTALL_DIR/hooks/gemini-bridge.sh"
+}
+EOF
+    log "info" "New Claude settings created"
 }
 
 # Set permissions
@@ -212,10 +209,7 @@ set_permissions() {
     log "info" "Setting file permissions..."
     
     # Make all shell scripts executable
-    find "$INSTALL_DIR" -name "*.sh" -exec chmod +x {} \;
-    
-    # Special permissions for hook script
-    chmod +x "$INSTALL_DIR/hooks/gemini-bridge.sh"
+    find "$SCRIPT_DIR" -name "*.sh" -exec chmod +x {} \;
     
     log "info" "Permissions set"
 }
@@ -226,91 +220,39 @@ run_basic_tests() {
     
     # Test library functions
     local lib_tests=("path-converter.sh" "json-parser.sh" "debug-helpers.sh" "gemini-wrapper.sh")
+    local test_failures=0
     
     for test in "${lib_tests[@]}"; do
-        if [ -f "$INSTALL_DIR/hooks/lib/$test" ]; then
-            if "$INSTALL_DIR/hooks/lib/$test" >/dev/null 2>&1; then
+        if [ -f "$SCRIPT_DIR/hooks/lib/$test" ]; then
+            if "$SCRIPT_DIR/hooks/lib/$test" >/dev/null 2>&1; then
                 log "debug" "$test: OK"
             else
                 log "warn" "$test: Tests failed"
+                test_failures=$((test_failures + 1))
             fi
         else
-            error_exit "File not found: $INSTALL_DIR/hooks/lib/$test"
+            log "warn" "File not found: $SCRIPT_DIR/hooks/lib/$test"
+            test_failures=$((test_failures + 1))
         fi
     done
     
     # Test hook script with mock input
-    local test_json='{"tool":"Read","parameters":{"file_path":"test.txt"},"context":{}}'
-    local hook_result=$(echo "$test_json" | "$INSTALL_DIR/hooks/gemini-bridge.sh" 2>/dev/null)
+    local test_json='{"tool_name":"Read","tool_input":{"file_path":"test.txt"},"session_id":"test","transcript_path":"/tmp/test"}'
+    local hook_result=$(echo "$test_json" | "$SCRIPT_DIR/hooks/gemini-bridge.sh" 2>/dev/null)
     
     if echo "$hook_result" | jq empty 2>/dev/null; then
         log "info" "Hook script test successful"
     else
         log "warn" "Hook script test failed, but installation continued"
         log "debug" "Hook output: $hook_result"
+        test_failures=$((test_failures + 1))
     fi
-}
-
-# Create documentation
-create_documentation() {
-    log "info" "Creating documentation..."
     
-    # Create README
-    cat > "$INSTALL_DIR/README.md" << 'EOF'
-# Claude-Gemini Bridge
-
-Automatic integration between Claude Code and Google Gemini for large-scale code analysis.
-
-## Quick Start
-
-1. **Test the installation:**
-   ```bash
-   $INSTALL_DIR/test/test-runner.sh
-   ```
-
-2. **Interactive tests:**
-   ```bash
-   $INSTALL_DIR/test/manual-test.sh
-   ```
-
-3. **Restart Claude Code** to load the new hooks:
-   ```bash
-   # If Claude Code is running, restart it completely
-   # The hooks are loaded once at startup
-   ```
-
-4. **Use Claude Code normally** - large analyses will be automatically delegated to Gemini!
-
-## Configuration
-
-- **Change debug level:** Edit `hooks/config/debug.conf`
-- **Adjust thresholds:** Edit `MIN_FILES_FOR_GEMINI` in `debug.conf`
-- **Clear cache:** `rm -rf cache/gemini/*`
-
-## Logs
-
-- **Debug:** `tail -f logs/debug/$(date +%Y%m%d).log`
-- **Errors:** `tail -f logs/debug/errors.log`
-- **Captured Inputs:** `ls debug/captured/`
-
-## Uninstallation
-
-```bash
-# Remove hook
-jq 'del(.hooks)' ~/.claude/settings.local.json > /tmp/claude_settings && mv /tmp/claude_settings ~/.claude/settings.local.json
-
-# Remove bridge
-rm -rf $INSTALL_DIR
-```
-
-## Support
-
-- **Troubleshooting:** `docs/TROUBLESHOOTING.md`
-- **Manual tests:** `test/manual-test.sh`
-- **Check logs:** `test/manual-test.sh` → Option 8
-EOF
-
-    log "info" "README.md created"
+    if [ $test_failures -eq 0 ]; then
+        log "info" "All tests passed"
+    else
+        log "warn" "$test_failures test(s) failed - installation may need troubleshooting"
+    fi
 }
 
 # Show installation summary
@@ -319,41 +261,40 @@ show_summary() {
     echo "🎉 Installation completed successfully!"
     echo "======================================="
     echo ""
-    echo "📁 Installation Directory: $INSTALL_DIR"
+    echo "📁 Installation Directory: $SCRIPT_DIR"
     echo "⚙️  Claude Settings: $CLAUDE_SETTINGS_FILE"
     echo ""
     echo "🧪 Next steps:"
+    echo ""
     echo "   1. **RESTART Claude Code** (hooks are loaded at startup)"
+    echo "      Exit Claude Code completely and restart it"
     echo ""
     echo "   2. Test the installation:"
-    echo "      $INSTALL_DIR/test/test-runner.sh"
+    echo "      $SCRIPT_DIR/test/test-runner.sh"
     echo ""
-    echo "   3. Interactive tests:"
-    echo "      $INSTALL_DIR/test/manual-test.sh"
-    echo ""
-    echo "   4. Use Claude Code normally - large analyses will be automatically delegated to Gemini!"
+    echo "   3. Use Claude Code normally:"
+    echo "      Large file analyses will automatically use Gemini!"
     echo ""
     echo "📚 Documentation:"
-    echo "   - README: $INSTALL_DIR/README.md"
-    echo "   - Troubleshooting: $INSTALL_DIR/docs/TROUBLESHOOTING.md"
+    echo "   - README: $SCRIPT_DIR/README.md"
+    echo "   - Troubleshooting: $SCRIPT_DIR/docs/TROUBLESHOOTING.md"
     echo ""
     echo "🔧 Configuration:"
-    echo "   - Debug level: $INSTALL_DIR/hooks/config/debug.conf"
-    echo "   - Logs: $INSTALL_DIR/logs/debug/"
+    echo "   - Debug level: $SCRIPT_DIR/hooks/config/debug.conf"
+    echo "   - Logs: $SCRIPT_DIR/logs/debug/"
     echo ""
     echo "💡 Debug commands:"
-    echo "   - View logs: tail -f $INSTALL_DIR/logs/debug/\$(date +%Y%m%d).log"
-    echo "   - Clear cache: rm -rf $INSTALL_DIR/cache/gemini/*"
-    echo "   - Run tests: $INSTALL_DIR/test/test-runner.sh"
+    echo "   - View logs: tail -f $SCRIPT_DIR/logs/debug/\$(date +%Y%m%d).log"
+    echo "   - Clear cache: rm -rf $SCRIPT_DIR/cache/gemini/*"
+    echo "   - Uninstall: $SCRIPT_DIR/uninstall.sh"
+    echo ""
+    echo "🚨 IMPORTANT: You must restart Claude Code for the hooks to take effect!"
 }
 
 # Main installation
 main() {
-    echo "This script installs the Claude-Gemini Bridge globally for all Claude Code projects."
-    echo "Installation directory: $INSTALL_DIR"
-    echo ""
-    echo "To install to a different location, set CLAUDE_GEMINI_BRIDGE_DIR:"
-    echo "  export CLAUDE_GEMINI_BRIDGE_DIR=/path/to/your/directory"
+    echo "This script configures the Claude-Gemini Bridge in the current directory."
+    echo "Installation directory: $SCRIPT_DIR"
     echo ""
     read -p "Continue with installation? (y/N): " confirm
     
@@ -366,14 +307,11 @@ main() {
     
     # Installation steps
     check_requirements
-    check_existing_installation
     create_directories
-    copy_files
     test_gemini_connection
     configure_claude_hooks
     set_permissions
     run_basic_tests
-    create_documentation
     
     show_summary
 }

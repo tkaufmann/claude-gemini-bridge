@@ -11,7 +11,7 @@ The Claude-Gemini Bridge automatically delegates complex code analysis tasks fro
 ## 🚀 Quick Start
 
 ```bash
-# Install the bridge (default location: ~/.claude-gemini-bridge)
+# Clone and install in one simple process
 git clone https://github.com/your-username/claude-gemini-bridge.git
 cd claude-gemini-bridge
 ./install.sh
@@ -26,17 +26,14 @@ cd claude-gemini-bridge
 claude "analyze all Python files in this project"
 ```
 
-### Custom Installation Directory
+### Installation Details
 
-To install to a custom location:
-
-```bash
-# Set custom installation directory
-export CLAUDE_GEMINI_BRIDGE_DIR="/path/to/your/directory"
-
-# Then install
-./install.sh
-```
+The installer:
+- ✅ Works in the current directory (no separate installation location)
+- ✅ Automatically merges with existing Claude hooks in `~/.claude/settings.json`
+- ✅ Creates backups before making changes
+- ✅ Tests all components during installation
+- ✅ Provides uninstallation via `./uninstall.sh`
 
 ## 📋 Table of Contents
 
@@ -134,25 +131,22 @@ The bridge delegates to Gemini when:
 - `jq` for JSON processing
 - `bash` 4.0+ (macOS: `brew install bash`)
 
-### Automatic Installation
+### One-Step Installation
 
 ```bash
+# Clone and install in current directory
 git clone https://github.com/your-username/claude-gemini-bridge.git
 cd claude-gemini-bridge
-
-# Default installation (to ~/.claude-gemini-bridge)
 ./install.sh
 
-# Or custom location
-export CLAUDE_GEMINI_BRIDGE_DIR="/your/custom/path"
-./install.sh
+# IMPORTANT: Restart Claude Code after installation!
 ```
 
 The installer will:
 - ✅ Check all prerequisites
 - ✅ Test Gemini connectivity
 - ✅ Backup existing Claude settings
-- ✅ Configure hooks in `~/.claude/settings.local.json`
+- ✅ Intelligently merge hooks into `~/.claude/settings.json`
 - ✅ Set up directory structure and permissions
 - ✅ Run validation tests
 

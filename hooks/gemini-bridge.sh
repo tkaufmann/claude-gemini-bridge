@@ -6,6 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load configuration
 source "$SCRIPT_DIR/config/debug.conf"
+
+# Set dynamic paths that aren't set in config
+if [ -z "$CAPTURE_DIR" ]; then
+    export CAPTURE_DIR="$SCRIPT_DIR/../debug/captured"
+fi
 source "$SCRIPT_DIR/lib/debug-helpers.sh"
 source "$SCRIPT_DIR/lib/path-converter.sh"
 source "$SCRIPT_DIR/lib/json-parser.sh"
