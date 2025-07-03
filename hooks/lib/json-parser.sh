@@ -4,13 +4,13 @@
 # Extracts tool name from JSON
 extract_tool_name() {
     local json="$1"
-    echo "$json" | jq -r '.tool // empty'
+    echo "$json" | jq -r '.tool_name // .tool // empty'
 }
 
 # Extracts parameters as JSON object
 extract_parameters() {
     local json="$1"
-    echo "$json" | jq -r '.parameters // {}'
+    echo "$json" | jq -r '.tool_input // .parameters // {}'
 }
 
 # Extracts working directory from context
