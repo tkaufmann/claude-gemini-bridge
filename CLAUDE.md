@@ -103,7 +103,7 @@ The bridge automatically excludes sensitive files:
 ## Integration Points
 
 ### Claude Code Integration
-- Seamless hook integration via `settings.local.json`
+- Seamless hook integration via `settings.json`
 - No modification of Claude Code required
 - Preserves all existing Claude functionality
 
@@ -115,7 +115,7 @@ The bridge automatically excludes sensitive files:
 ## Troubleshooting
 
 ### Common Issues
-- **Hook not executing**: Check `~/.claude/settings.local.json` configuration
+- **Hook not executing**: Check `~/.claude/settings.json` configuration
 - **Gemini not found**: Verify `gemini` CLI is in PATH
 - **Cache issues**: Clear cache with `rm -rf cache/gemini/*`
 - **Permission errors**: Ensure scripts are executable

@@ -163,21 +163,21 @@ The installer will:
 
 2. **Set up directory structure:**
    ```bash
-   mkdir -p ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}
-   cp -r * ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/
-   chmod +x ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/*.sh
+   # Files are already in the right place after git clone
+   chmod +x hooks/*.sh
+   mkdir -p cache/gemini logs/debug debug/captured
    ```
 
 3. **Configure Claude Code hooks:**
    ```bash
-   # Add to ~/.claude/settings.local.json
+   # Add to ~/.claude/settings.json
    {
      "hooks": {
        "PreToolUse": [{
          "matcher": "Read|Grep|Glob|Task",
          "hooks": [{
            "type": "command",
-           "command": "${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/gemini-bridge.sh"
+           "command": "/full/path/to/claude-gemini-bridge/hooks/gemini-bridge.sh"
          }]
        }]
      }
@@ -190,7 +190,7 @@ The installer will:
 
 ### Basic Configuration
 
-Edit `${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf`:
+Edit `hooks/config/debug.conf` in your installation directory:
 
 ```bash
 # Delegation thresholds
@@ -318,25 +318,25 @@ claude "analyze all Python files in @src/ directory"
 
 ```bash
 # Temporarily lower thresholds to force delegation
-echo "MIN_FILES_FOR_GEMINI=1" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
-echo "MIN_FILE_SIZE_FOR_GEMINI=1" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+echo "MIN_FILES_FOR_GEMINI=1" >> hooks/config/debug.conf
+echo "MIN_FILE_SIZE_FOR_GEMINI=1" >> hooks/config/debug.conf
 
 # Test with a simple file
 claude "analyze @README.md"
 
 # Reset thresholds afterwards
-echo "MIN_FILES_FOR_GEMINI=3" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
-echo "MIN_FILE_SIZE_FOR_GEMINI=10240" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+echo "MIN_FILES_FOR_GEMINI=3" >> hooks/config/debug.conf
+echo "MIN_FILE_SIZE_FOR_GEMINI=10240" >> hooks/config/debug.conf
 ```
 
 #### 5. Check Cache for Gemini Responses
 
 ```bash
 # List cached Gemini responses
-ls -la ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/
+ls -la cache/gemini/
 
 # View a cached response
-find ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/ -name "*" -type f -exec echo "=== {} ===" \; -exec cat {} \; -exec echo \;
+find cache/gemini/ -name "*" -type f -exec echo "=== {} ===" \; -exec cat {} \; -exec echo \;
 ```
 
 #### 6. Performance Indicators

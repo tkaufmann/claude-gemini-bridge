@@ -10,28 +10,28 @@
 **Lösungsschritte:**
 1. Prüfe Claude Settings:
    ```bash
-   cat ~/.claude/settings.local.json
+   cat ~/.claude/settings.json
    ```
    
 2. Teste Hook manuell:
    ```bash
-   echo '{"tool":"Read","parameters":{"file_path":"test.txt"},"context":{}}' | ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/gemini-bridge.sh
+   echo '{"tool_name":"Read","tool_input":{"file_path":"test.txt"},"session_id":"test"}' | ./hooks/gemini-bridge.sh
    ```
 
 3. Prüfe Berechtigungen:
    ```bash
-   ls -la ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/gemini-bridge.sh
+   ls -la hooks/gemini-bridge.sh
    # Sollte ausführbar sein (x-Flag)
    ```
 
 4. Prüfe Hook-Konfiguration:
    ```bash
-   jq '.hooks' ~/.claude/settings.local.json
+   jq '.hooks' ~/.claude/settings.json
    ```
 
 **Lösung:** Re-Installation ausführen:
 ```bash
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/install.sh
+./install.sh
 ```
 
 ---
