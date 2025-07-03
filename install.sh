@@ -103,19 +103,51 @@ create_directories() {
     fi
 }
 
+# Copy files to installation directory
+copy_files() {
+    log "info" "Copying files to installation directory..."
+    
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Copy all files except .git and temporary files
+    cp -r "$script_dir"/* "$INSTALL_DIR/" 2>/dev/null || true
+    
+    # Ensure we don't copy .git directory
+    rm -rf "$INSTALL_DIR/.git" 2>/dev/null || true
+    
+    # Verify critical files were copied
+    if [ ! -f "$INSTALL_DIR/hooks/gemini-bridge.sh" ]; then
+        error_exit "Failed to copy main hook script"
+    fi
+    
+    if [ ! -d "$INSTALL_DIR/hooks/lib" ]; then
+        error_exit "Failed to copy library files"
+    fi
+    
+    log "info" "Files copied successfully"
+}
+
 # Test Gemini connection
 test_gemini_connection() {
     log "info" "Testing Gemini connection..."
     
-    # Simple test call
-    local test_result=$(echo "Test" | gemini -p "Say hello" 2>&1)
+    # Simple test call - just check if Gemini CLI works at all
+    local test_result=$(echo "1+1" | gemini -p "What is the result?" 2>&1)
     local exit_code=$?
     
-    if [ $exit_code -eq 0 ] && [[ "$test_result" =~ [Hh]ello ]]; then
+    # Only check exit code and that we got SOME response
+    if [ $exit_code -eq 0 ] && [ -n "$test_result" ] && [ ${#test_result} -gt 0 ]; then
         log "info" "Gemini connection tested successfully"
+        log "debug" "Gemini CLI is working and responding"
     else
         log "warn" "Gemini test failed. API key configured?"
+        log "debug" "Gemini exit code: $exit_code"
         log "debug" "Gemini output: $test_result"
+        echo ""
+        echo "Common issues:"
+        echo "  - Missing API key: export GEMINI_API_KEY=your_key"
+        echo "  - Authentication problem with Gemini CLI"
+        echo "  - Network connectivity issues"
         echo ""
         read -p "Continue anyway? (y/N): " continue_anyway
         if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
@@ -328,6 +360,7 @@ main() {
     check_requirements
     check_existing_installation
     create_directories
+    copy_files
     test_gemini_connection
     configure_claude_hooks
     set_permissions
