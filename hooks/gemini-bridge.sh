@@ -72,10 +72,33 @@ case "$TOOL_NAME" in
     "Glob")
         PATTERN_RAW=$(extract_file_paths "$TOOL_PARAMS" "$TOOL_NAME")
         ABSOLUTE_PATTERN=$(convert_claude_paths "$PATTERN_RAW" "$WORKING_DIR")
-        # Expand glob pattern
-        cd "$WORKING_DIR" 2>/dev/null || cd /tmp
-        FILES=$(eval "ls $ABSOLUTE_PATTERN" 2>/dev/null | head -$GEMINI_MAX_FILES)
-        ORIGINAL_PROMPT="Find files matching: $PATTERN_RAW"
+        # Get search path from parameters
+        SEARCH_PATH=$(echo "$TOOL_PARAMS" | jq -r '.path // empty')
+        if [ -z "$SEARCH_PATH" ]; then
+            SEARCH_PATH="$WORKING_DIR"
+        fi
+        # Expand glob pattern properly and safely
+        cd "$SEARCH_PATH" 2>/dev/null || cd "$WORKING_DIR" 2>/dev/null || cd /tmp
+        # Use find for safe glob expansion
+        if [[ "$PATTERN_RAW" == "**/*"* ]]; then
+            # Handle recursive patterns
+            EXTENSION=$(echo "$PATTERN_RAW" | sed 's/.*\*\*\/\*\.\([^*]*\)$/\1/')
+            if [ "$EXTENSION" != "$PATTERN_RAW" ]; then
+                FILES=$(find . -name "*.${EXTENSION}" -type f 2>/dev/null | sed 's|^\./||' | head -$GEMINI_MAX_FILES)
+            else
+                FILES=$(find . -type f 2>/dev/null | sed 's|^\./||' | head -$GEMINI_MAX_FILES)
+            fi
+        else
+            # Simple glob patterns
+            FILES=$(ls $PATTERN_RAW 2>/dev/null | head -$GEMINI_MAX_FILES)
+        fi
+        # Convert to absolute paths
+        ABSOLUTE_FILES=""
+        for file in $FILES; do
+            ABSOLUTE_FILES="$ABSOLUTE_FILES $(cd "$SEARCH_PATH" && pwd)/$file"
+        done
+        FILES="$ABSOLUTE_FILES"
+        ORIGINAL_PROMPT="Find files matching: $PATTERN_RAW in $SEARCH_PATH"
         ;;
     "Grep")
         GREP_INFO=$(extract_file_paths "$TOOL_PARAMS" "$TOOL_NAME")
