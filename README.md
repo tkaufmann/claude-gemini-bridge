@@ -273,6 +273,104 @@ echo "DRY_RUN=true" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hook
 tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
 ```
 
+## 🔍 Verifying Gemini Integration
+
+### How to See if Gemini is Actually Called
+
+#### 1. Real-time Log Monitoring
+
+```bash
+# Monitor live logs while using Claude Code
+tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
+
+# Filter for Gemini-specific entries
+tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log | grep -i gemini
+```
+
+#### 2. Enable Verbose Debug Output
+
+```bash
+# Set maximum debug level
+echo "DEBUG_LEVEL=3" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+
+# Now run a Claude command that should trigger Gemini
+claude "analyze all Python files in @src/ directory"
+```
+
+#### 3. Look for These Log Indicators
+
+**Gemini WILL be called when you see:**
+```
+[INFO] Processing tool: Task
+[DEBUG] File count: 5 (minimum: 3)
+[DEBUG] Total file size: 25KB (minimum: 10KB)
+[INFO] Delegating to Gemini: files meet criteria
+[INFO] Calling Gemini for tool: Task
+[INFO] Gemini call successful (2.3s, 5 files)
+```
+
+**Gemini will NOT be called when you see:**
+```
+[INFO] Processing tool: Read
+[DEBUG] File count: 1 (minimum: 3)
+[DEBUG] Not enough files for Gemini delegation
+[INFO] Continuing with normal tool execution
+```
+
+#### 4. Force Gemini Delegation for Testing
+
+```bash
+# Temporarily lower thresholds to force delegation
+echo "MIN_FILES_FOR_GEMINI=1" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+echo "MIN_FILE_SIZE_FOR_GEMINI=1" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+
+# Test with a simple file
+claude "analyze @README.md"
+
+# Reset thresholds afterwards
+echo "MIN_FILES_FOR_GEMINI=3" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+echo "MIN_FILE_SIZE_FOR_GEMINI=10240" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+```
+
+#### 5. Check Cache for Gemini Responses
+
+```bash
+# List cached Gemini responses
+ls -la ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/
+
+# View a cached response
+find ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/ -name "*" -type f -exec echo "=== {} ===" \; -exec cat {} \; -exec echo \;
+```
+
+#### 6. Performance Indicators
+
+Gemini calls typically show:
+- **Execution time**: 2-10 seconds (vs. <1s for Claude)
+- **Rate limiting**: "Rate limiting: sleeping 1s" messages
+- **Cache hits**: "Using cached result" for repeated queries
+
+#### 7. Test with Interactive Tool
+
+```bash
+# Use the interactive tester to simulate Gemini calls
+${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/test/manual-test.sh
+
+# Choose option 3 (Multi-File Glob) or 2 (Task Search) to trigger Gemini
+```
+
+#### 8. Dry Run Mode for Debugging
+
+```bash
+# Enable dry run to see decision logic without calling Gemini
+echo "DRY_RUN=true" >> ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+
+# Run Claude command - you'll see "DRY RUN: Would call Gemini" instead of actual calls
+claude "analyze @src/ @docs/ @test/"
+
+# Disable dry run
+sed -i '' '/DRY_RUN=true/d' ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+```
+
 ## 🧪 Testing
 
 ### Automated Testing
