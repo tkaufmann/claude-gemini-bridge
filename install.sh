@@ -150,7 +150,7 @@ configure_claude_hooks() {
             case $update_choice in
                 1)
                     log "info" "Updating hook path to current location..."
-                    update_existing_hook "$hook_command"
+                    update_existing_hook "$hook_command" "$hook_matcher"
                     return 0
                     ;;
                 2)
@@ -198,12 +198,13 @@ configure_claude_hooks() {
 # Update existing hook path
 update_existing_hook() {
     local hook_command="$1"
+    local hook_matcher="$2"
     
-    local updated_config=$(jq --arg cmd "$hook_command" '
+    local updated_config=$(jq --arg cmd "$hook_command" --arg matcher "$hook_matcher" '
         .hooks.PreToolUse = (.hooks.PreToolUse // []) | 
         .hooks.PreToolUse |= map(
             if .hooks[]?.command? and (.hooks[]?.command | contains("gemini-bridge.sh"))
-            then (.hooks[0].command = $cmd)
+            then (.hooks[0].command = $cmd | .matcher = $matcher)
             else . end
         )' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
     

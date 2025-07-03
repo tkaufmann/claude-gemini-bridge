@@ -160,8 +160,8 @@ should_delegate_to_gemini() {
     
     debug_log 2 "File count: $file_count, Total size: $total_size bytes, Estimated tokens: $estimated_tokens"
     
-    # Claude's practical limit: ~150k tokens (leaving room for response)
-    local claude_token_limit=150000
+    # Claude's practical limit: ~50k tokens (leaving room for response)
+    local claude_token_limit=50000
     # Gemini's practical limit: ~800k tokens (leaving room for response)  
     local gemini_token_limit=800000
     
@@ -177,7 +177,7 @@ should_delegate_to_gemini() {
     fi
     
     # For smaller content, check if it's a multi-file analysis task that benefits from Gemini
-    if [ "$file_count" -ge 5 ] && [[ "$tool" == "Task" ]]; then
+    if [ "$file_count" -ge 3 ] && [[ "$tool" == "Task" ]]; then
         debug_log 1 "Multi-file Task ($file_count files) - delegating to Gemini for better analysis"
         return 0
     fi

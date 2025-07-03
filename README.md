@@ -11,7 +11,7 @@ The Claude-Gemini Bridge automatically delegates complex code analysis tasks fro
 ## 🚀 Quick Start
 
 ```bash
-# Clone and install in one simple process
+# Clone and install for all projects in one simple process
 git clone https://github.com/your-username/claude-gemini-bridge.git
 cd claude-gemini-bridge
 ./install.sh
@@ -99,16 +99,25 @@ sequenceDiagram
     Claude->>Bridge: PreToolUse Hook (Glob *.py)
     
     Bridge->>Bridge: Convert @ paths to absolute
-    Bridge->>Bridge: Count files (20 > threshold)
-    Bridge->>Bridge: Check file sizes (within limits)
+    Bridge->>Bridge: Count files (20 files)
+    Bridge->>Bridge: Calculate total size (500KB)
+    Bridge->>Bridge: Estimate tokens (~125k)
     
-    alt Delegate to Gemini
-        Bridge->>Gemini: Analyze files with context
-        Gemini->>Bridge: Structured analysis
+    alt Token limit exceeded (>50k)
+        Bridge->>Bridge: Check if within Gemini limits (<800k)
+        Bridge->>Gemini: Analyze 20 files with context
+        Gemini->>Bridge: Structured analysis result
+        Bridge->>Claude: Replace tool call with Gemini result
+        Claude->>User: Comprehensive analysis from Gemini
+    else Multi-file Task (≥3 files)
+        Bridge->>Bridge: Check if Task operation
+        Bridge->>Gemini: Delegate multi-file analysis
+        Gemini->>Bridge: Analysis result
         Bridge->>Claude: Replace with Gemini result
-        Claude->>User: Comprehensive analysis
-    else Continue normally
+        Claude->>User: Multi-file analysis from Gemini
+    else Small content (<50k tokens, <3 files)
         Bridge->>Claude: Continue with normal execution
+        Claude->>Claude: Process files normally
         Claude->>User: Standard Claude response
     end
 ```
@@ -117,8 +126,9 @@ sequenceDiagram
 
 The bridge delegates to Gemini when:
 
-- **File Count**: ≥3 files (configurable)
-- **Total Size**: Between 10KB and 10MB
+- **Token Limit**: Content exceeds ~50k tokens (~200KB, optimized for Claude's 200k context)
+- **File Count**: ≥3 files for Task operations (configurable)
+- **Total Size**: ≥5KB minimum and ≤10MB maximum  
 - **Task Type**: Contains keywords like "analyze", "search", "summarize"
 - **Tool Type**: Complex Glob patterns, multi-file operations
 
@@ -131,24 +141,58 @@ The bridge delegates to Gemini when:
 - `jq` for JSON processing
 - `bash` 4.0+ (macOS: `brew install bash`)
 
-### One-Step Installation
+### Installation Options
+
+The Claude-Gemini Bridge supports two deployment models:
+
+#### 🌍 Global Installation (Recommended)
+
+For system-wide use across all projects:
 
 ```bash
-# Clone and install in current directory
-git clone https://github.com/your-username/claude-gemini-bridge.git
-cd claude-gemini-bridge
+# Clone to a permanent location
+git clone https://github.com/your-username/claude-gemini-bridge.git ~/claude-gemini-bridge
+cd ~/claude-gemini-bridge
 ./install.sh
 
 # IMPORTANT: Restart Claude Code after installation!
 ```
 
-The installer will:
-- ✅ Check all prerequisites
-- ✅ Test Gemini connectivity
-- ✅ Backup existing Claude settings
-- ✅ Intelligently merge hooks into `~/.claude/settings.json`
-- ✅ Set up directory structure and permissions
-- ✅ Run validation tests
+**Benefits:**
+- ✅ Works with all projects automatically
+- ✅ Single configuration location
+- ✅ Easier maintenance and updates
+- ✅ Hooks registered in `~/.claude/settings.json`
+
+#### 📁 Project-Specific Installation
+
+For use within a specific project directory:
+
+```bash
+# Clone into your project
+cd /path/to/your/project
+git clone https://github.com/your-username/claude-gemini-bridge.git .claude-gemini
+cd .claude-gemini
+./install.sh
+
+# Project-specific configuration
+echo "MIN_FILES_FOR_GEMINI=2" > .claude-gemini.conf
+echo "GEMINI_TIMEOUT=60" >> .claude-gemini.conf
+```
+
+**Benefits:**
+- ✅ Project-specific settings via `.claude-gemini.conf`
+- ✅ Different thresholds per project
+- ✅ Team-shareable configuration
+- ✅ Isolated from other projects
+
+The installer automatically:
+- ✅ Checks all prerequisites
+- ✅ Tests Gemini connectivity  
+- ✅ Backs up existing Claude settings
+- ✅ Intelligently merges hooks into `~/.claude/settings.json`
+- ✅ Sets up directory structure and permissions
+- ✅ Runs validation tests
 
 ### Manual Installation
 
@@ -188,25 +232,36 @@ The installer will:
 
 ## ⚙️ Configuration
 
-### Basic Configuration
+### Complete Configuration Reference
 
 Edit `hooks/config/debug.conf` in your installation directory:
 
 ```bash
-# Delegation thresholds
-MIN_FILES_FOR_GEMINI=3              # Minimum files to trigger delegation
-MIN_FILE_SIZE_FOR_GEMINI=10240      # Minimum total size (10KB)
-MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Maximum total size (10MB)
+# Debug configuration
+DEBUG_LEVEL=2                    # 0=off, 1=basic, 2=verbose, 3=trace
+CAPTURE_INPUTS=true              # Save hook inputs for analysis
+MEASURE_PERFORMANCE=true         # Enable timing measurements
+DRY_RUN=false                   # Test mode without Gemini calls
 
-# Performance settings
-GEMINI_CACHE_TTL=3600               # Cache duration (1 hour)
-GEMINI_RATE_LIMIT=1                 # Seconds between API calls
-GEMINI_TIMEOUT=30                   # Request timeout
+# Delegation thresholds (optimized for Claude 200k context)
+MIN_FILES_FOR_GEMINI=3          # Delegate Task operations with ≥3 files
+MIN_FILE_SIZE_FOR_GEMINI=5120   # Minimum 5KB total size (was 10KB)
+MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Maximum 10MB total size
 
-# Debug settings
-DEBUG_LEVEL=2                       # 0=off, 1=basic, 2=verbose, 3=trace
-CAPTURE_INPUTS=true                 # Save inputs for debugging
-DRY_RUN=false                       # Test mode (doesn't call Gemini)
+# Gemini API settings
+GEMINI_CACHE_TTL=3600           # Cache responses for 1 hour
+GEMINI_RATE_LIMIT=1             # 1 second between API calls
+GEMINI_TIMEOUT=30               # 30 second API timeout
+GEMINI_MAX_FILES=20             # Maximum files per Gemini call
+
+# File security (never sent to Gemini)
+GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|*.password|*.token|*.pem|*.p12"
+
+# Automatic maintenance
+AUTO_CLEANUP_CACHE=true         # Enable cache cleanup
+CACHE_MAX_AGE_HOURS=24          # Clean cache older than 24h
+AUTO_CLEANUP_LOGS=true          # Enable log rotation
+LOG_MAX_AGE_DAYS=7              # Keep logs for 7 days
 ```
 
 ### Advanced Configuration
@@ -243,18 +298,80 @@ claude "summarize the architecture of this codebase"
 
 ### Project-Specific Configuration
 
+#### Configuration Hierarchy
+
+The bridge supports flexible configuration through multiple layers:
+
+```mermaid
+graph TD
+    A[Project .claude-gemini.conf] --> B[Global debug.conf]
+    B --> C[Environment Variables]
+    C --> D[Default Values]
+    
+    style A fill:#e8f5e8
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+```
+
+#### Creating Project Configurations
+
 Create `.claude-gemini.conf` in your project root:
 
 ```bash
-# Disable Gemini for sensitive projects
-GEMINI_ENABLED=false
+# === Large Project Configuration ===
+# For projects with many files - be more selective
+MIN_FILES_FOR_GEMINI=10              # Higher threshold
+MIN_FILE_SIZE_FOR_GEMINI=20480       # 20KB minimum
+GEMINI_TIMEOUT=60                    # Longer timeout
+DEBUG_LEVEL=1                        # Less verbose
 
-# Custom thresholds for large projects
-MIN_FILES_FOR_GEMINI=10
-GEMINI_TIMEOUT=60
+# === Sensitive Project Configuration ===
+# For projects with confidential code
+GEMINI_ENABLED=false                 # Completely disable Gemini
+DEBUG_LEVEL=0                        # No logging
 
-# Project-specific exclusions
-GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|internal/*"
+# === Development Project Configuration ===
+# For active development with frequent analysis
+MIN_FILES_FOR_GEMINI=2               # Lower threshold
+GEMINI_CACHE_TTL=1800               # 30-minute cache
+DEBUG_LEVEL=3                        # Maximum verbosity
+CAPTURE_INPUTS=true                  # Save all inputs for debugging
+
+# === Team Project Configuration ===
+# Shared settings for development teams
+MIN_FILES_FOR_GEMINI=5
+GEMINI_TIMEOUT=45
+GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|internal/*|private/*"
+```
+
+#### Configuration Examples by Project Type
+
+**React/TypeScript Project:**
+```bash
+# .claude-gemini.conf
+MIN_FILES_FOR_GEMINI=3
+MIN_FILE_SIZE_FOR_GEMINI=8192        # 8KB for smaller components
+GEMINI_EXCLUDE_PATTERNS="*.secret|*.env|node_modules/*|dist/*|build/*"
+GEMINI_TIMEOUT=30
+```
+
+**Large Monorepo:**
+```bash
+# .claude-gemini.conf  
+MIN_FILES_FOR_GEMINI=15              # Only very large analyses
+MIN_FILE_SIZE_FOR_GEMINI=51200       # 50KB minimum
+GEMINI_TIMEOUT=90                    # Longer processing time
+GEMINI_MAX_FILES=50                  # More files per call
+```
+
+**Security-Conscious Project:**
+```bash
+# .claude-gemini.conf
+GEMINI_ENABLED=false                 # Disable completely
+# OR for limited use:
+# MIN_FILES_FOR_GEMINI=20            # Very high threshold
+# GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|src/auth/*|config/*"
 ```
 
 ### Debug Mode

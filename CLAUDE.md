@@ -29,29 +29,28 @@ The Claude-Gemini Bridge is an intelligent hook system that seamlessly integrate
 ### Automatic Delegation Triggers
 
 The bridge delegates to Gemini when:
-- **File Count**: ≥3 files (configurable)
-- **Total Size**: ≥10KB and ≤10MB
+- **Token Limit**: Content exceeds ~50k tokens (~200KB, optimized for Claude's 200k context)
+- **File Count**: ≥3 files for Task operations (configurable)
+- **Total Size**: ≥5KB minimum and ≤10MB maximum
 - **Task Keywords**: Contains search, find, analyze, summarize
 - **Tool Types**: Complex Glob patterns, multi-file operations
 
 ### Configuration
 
-Edit `hooks/config/debug.conf` to customize:
+Key settings in `hooks/config/debug.conf`:
 
 ```bash
-# Delegation thresholds
-MIN_FILES_FOR_GEMINI=3
-MIN_FILE_SIZE_FOR_GEMINI=10240
-MAX_TOTAL_SIZE_FOR_GEMINI=10485760
+# Delegation thresholds (optimized for Claude 200k context)
+MIN_FILES_FOR_GEMINI=3          # Delegate Task operations with ≥3 files
+MIN_FILE_SIZE_FOR_GEMINI=5120   # Minimum 5KB total size
+MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Maximum 10MB total size
 
-# Performance settings
-GEMINI_CACHE_TTL=3600
-GEMINI_RATE_LIMIT=1
-GEMINI_TIMEOUT=30
-
-# Debug level (0-3)
-DEBUG_LEVEL=2
+# Debug and performance
+DEBUG_LEVEL=2                   # 0=off, 1=basic, 2=verbose, 3=trace
+DRY_RUN=false                   # Test mode without Gemini calls
 ```
+
+See README.md for complete configuration reference.
 
 ## Development Guidelines
 
@@ -90,6 +89,12 @@ The bridge automatically excludes sensitive files:
 
 ## Performance Optimization
 
+### Delegation Strategy (Optimized 2024)
+- **Early delegation**: Content >50k tokens (~200KB) goes to Gemini
+- **Multi-file threshold**: Task operations with ≥3 files delegate automatically
+- **Efficient context usage**: Claude reserves capacity for response generation
+- **Gemini utilization**: Leverages 1M token capacity for large analysis tasks
+
 ### Caching Strategy
 - Content-aware cache keys based on file contents and metadata
 - 1-hour default TTL with automatic cleanup
@@ -99,6 +104,11 @@ The bridge automatically excludes sensitive files:
 - Automatic memory cleanup after processing
 - Background cache and log rotation
 - Configurable file size limits
+
+### Performance Impact (2024 Optimization)
+- **Early delegation**: Content >50k tokens (~200KB) → Gemini
+- **Multi-file threshold**: ≥3 files for Task operations → Gemini  
+- **Better coverage**: Minimum size reduced to 5KB
 
 ## Integration Points
 
