@@ -1,0 +1,9 @@
+{
+  "tool": "Glob",
+  "parameters": {
+    "pattern": "@**/*.php"
+  },
+  "context": {
+    "working_directory": "/Users/tim/Code/smartphones"
+  }
+}

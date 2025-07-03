@@ -1,0 +1,9 @@
+{
+  "tool": "Read",
+  "parameters": {
+    "file_path": "@src/main.py"
+  },
+  "context": {
+    "working_directory": "/Users/tim/Code/test-project"
+  }
+}

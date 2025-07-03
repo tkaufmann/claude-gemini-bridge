@@ -1,0 +1,10 @@
+{
+  "tool": "Task",
+  "parameters": {
+    "prompt": "Search for all occurrences of 'config' in @./ and analyze the configuration patterns",
+    "description": "Config pattern analysis"
+  },
+  "context": {
+    "working_directory": "/Users/tim/Code/smartphones/code/claude2gemini"
+  }
+}

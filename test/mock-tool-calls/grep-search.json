@@ -1,0 +1,11 @@
+{
+  "tool": "Grep",
+  "parameters": {
+    "pattern": "function.*config",
+    "path": "@src/",
+    "include": "*.php"
+  },
+  "context": {
+    "working_directory": "/Users/tim/Code/smartphones"
+  }
+}
