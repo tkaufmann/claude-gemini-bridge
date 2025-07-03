@@ -127,10 +127,9 @@ sequenceDiagram
 The bridge delegates to Gemini when:
 
 - **Token Limit**: Content exceeds ~50k tokens (~200KB, optimized for Claude's 200k context)
-- **File Count**: ≥3 files for Task operations (configurable)
-- **Total Size**: ≥5KB minimum and ≤10MB maximum  
-- **Task Type**: Contains keywords like "analyze", "search", "summarize"
-- **Tool Type**: Complex Glob patterns, multi-file operations
+- **Multi-File Tasks**: ≥3 files for Task operations (configurable)
+- **Safety Limits**: Content must be ≤10MB and ≤800k tokens for Gemini processing
+- **File Exclusions**: Automatically excludes sensitive files (*.secret, *.key, *.env, etc.)
 
 ## 📦 Installation
 
