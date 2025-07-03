@@ -149,7 +149,7 @@ The Claude-Gemini Bridge supports two deployment models:
 For system-wide use across all projects:
 
 ```bash
-# Clone to a permanent location
+# Clone to a permanent location (one-time setup)
 git clone https://github.com/your-username/claude-gemini-bridge.git ~/claude-gemini-bridge
 cd ~/claude-gemini-bridge
 ./install.sh
@@ -159,31 +159,48 @@ cd ~/claude-gemini-bridge
 
 **Benefits:**
 - ✅ Works with all projects automatically
-- ✅ Single configuration location
-- ✅ Easier maintenance and updates
-- ✅ Hooks registered in `~/.claude/settings.json`
+- ✅ Single bridge installation to maintain
+- ✅ Easier updates via git pull
+- ✅ Global hooks in `~/.claude/settings.json`
 
-#### 📁 Project-Specific Installation
+#### 📁 Project-Specific Configuration
 
-For use within a specific project directory:
+For project-specific settings without separate installation:
 
 ```bash
-# Clone into your project
-cd /path/to/your/project
-git clone https://github.com/your-username/claude-gemini-bridge.git .claude-gemini
-cd .claude-gemini
-./install.sh
+# Use the same global bridge installation
+# No additional cloning needed!
 
-# Project-specific configuration
-echo "MIN_FILES_FOR_GEMINI=2" > .claude-gemini.conf
-echo "GEMINI_TIMEOUT=60" >> .claude-gemini.conf
+# Create project-specific Claude settings
+mkdir -p .claude
+cat > .claude/settings.json << 'EOF'
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Read|Grep|Glob|Task",
+      "hooks": [{
+        "type": "command", 
+        "command": "/Users/yourname/claude-gemini-bridge/hooks/gemini-bridge.sh"
+      }]
+    }]
+  }
+}
+EOF
+
+# Create project-specific bridge configuration
+cat > .claude-gemini.conf << 'EOF'
+MIN_FILES_FOR_GEMINI=2
+GEMINI_TIMEOUT=60
+DEBUG_LEVEL=1
+EOF
 ```
 
 **Benefits:**
 - ✅ Project-specific settings via `.claude-gemini.conf`
 - ✅ Different thresholds per project
-- ✅ Team-shareable configuration
-- ✅ Isolated from other projects
+- ✅ Team-shareable configuration files
+- ✅ No duplicate bridge installations
+- ✅ Project-local Claude settings override global ones
 
 The installer automatically:
 - ✅ Checks all prerequisites
