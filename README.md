@@ -138,7 +138,7 @@ The bridge delegates to Gemini when:
 - [Claude Code CLI](https://claude.ai/code) installed and configured
 - [Google Gemini CLI](https://github.com/google/generative-ai-cli) installed
 - `jq` for JSON processing
-- `bash` 4.0+ (macOS: `brew install bash`)
+- `bash` 4.0+
 
 ### Installation Options
 
