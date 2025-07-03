@@ -126,27 +126,43 @@ configure_claude_hooks() {
     local hook_command="$SCRIPT_DIR/hooks/gemini-bridge.sh"
     local hook_matcher="Read|Grep|Glob|Task"
     
-    # Check if we already have this hook
+    # Check for any existing Claude-Gemini Bridge installation
     if [ -f "$CLAUDE_SETTINGS_FILE" ]; then
-        if grep -q "$hook_command" "$CLAUDE_SETTINGS_FILE" 2>/dev/null; then
-            log "info" "Hook already configured, updating path if needed..."
+        if grep -q "gemini-bridge.sh" "$CLAUDE_SETTINGS_FILE" 2>/dev/null; then
+            log "warn" "Existing Claude-Gemini Bridge installation detected!"
             
-            # Update the command path using jq
-            local updated_config=$(jq --arg cmd "$hook_command" '
-                .hooks.PreToolUse = (.hooks.PreToolUse // []) | 
-                .hooks.PreToolUse |= map(
-                    if .hooks[]?.command? and (.hooks[]?.command | contains("gemini-bridge.sh"))
-                    then .hooks[0].command = $cmd
-                    else . end
-                )' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
-            
-            if [ $? -eq 0 ] && [ -n "$updated_config" ]; then
-                echo "$updated_config" > "$CLAUDE_SETTINGS_FILE"
-                log "info" "Hook path updated"
-            else
-                log "warn" "Could not update hook path automatically"
+            # Show current hook path
+            local current_path=$(grep -o '[^"]*gemini-bridge.sh' "$CLAUDE_SETTINGS_FILE" 2>/dev/null | head -1)
+            if [ -n "$current_path" ]; then
+                log "debug" "Current hook path: $current_path"
+                log "debug" "New hook path: $hook_command"
             fi
-            return 0
+            
+            # Ask user what to do
+            echo ""
+            echo "Options:"
+            echo "1) Update hook path to current location (recommended)"
+            echo "2) Remove old hook and add new one"
+            echo "3) Cancel installation"
+            echo ""
+            read -p "Choose option (1-3): " update_choice
+            
+            case $update_choice in
+                1)
+                    log "info" "Updating hook path to current location..."
+                    update_existing_hook "$hook_command"
+                    return 0
+                    ;;
+                2)
+                    log "info" "Removing old hook and installing new one..."
+                    remove_existing_hooks
+                    # Continue with normal installation below
+                    ;;
+                3|*)
+                    log "info" "Installation cancelled"
+                    exit 0
+                    ;;
+            esac
         fi
     fi
     
@@ -177,6 +193,52 @@ configure_claude_hooks() {
     fi
     
     log "debug" "Hook configured: $hook_command"
+}
+
+# Update existing hook path
+update_existing_hook() {
+    local hook_command="$1"
+    
+    local updated_config=$(jq --arg cmd "$hook_command" '
+        .hooks.PreToolUse = (.hooks.PreToolUse // []) | 
+        .hooks.PreToolUse |= map(
+            if .hooks[]?.command? and (.hooks[]?.command | contains("gemini-bridge.sh"))
+            then (.hooks[0].command = $cmd)
+            else . end
+        )' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
+    
+    if [ $? -eq 0 ] && [ -n "$updated_config" ]; then
+        echo "$updated_config" > "$CLAUDE_SETTINGS_FILE"
+        log "info" "Hook path updated successfully"
+    else
+        log "error" "Failed to update hook path"
+        exit 1
+    fi
+}
+
+# Remove existing gemini-bridge hooks
+remove_existing_hooks() {
+    log "debug" "Removing existing Claude-Gemini Bridge hooks..."
+    
+    local cleaned_config=$(jq '
+        .hooks.PreToolUse = (.hooks.PreToolUse // []) | 
+        .hooks.PreToolUse |= map(
+            select(.hooks[]?.command? and (.hooks[]?.command | contains("gemini-bridge.sh")) | not)
+        ) |
+        if (.hooks.PreToolUse | length) == 0 then 
+            del(.hooks.PreToolUse) 
+        else . end |
+        if (.hooks | length) == 0 then 
+            del(.hooks) 
+        else . end
+    ' "$CLAUDE_SETTINGS_FILE" 2>/dev/null)
+    
+    if [ $? -eq 0 ] && [ -n "$cleaned_config" ]; then
+        echo "$cleaned_config" > "$CLAUDE_SETTINGS_FILE"
+        log "info" "Existing hooks removed"
+    else
+        log "warn" "Could not remove existing hooks automatically"
+    fi
 }
 
 # Create new settings file
