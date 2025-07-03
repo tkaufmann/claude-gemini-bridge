@@ -37,9 +37,11 @@ extract_file_paths() {
             echo "$path (pattern: $pattern)"
             ;;
         "Task")
-            # Search task prompts for file paths
+            # Simple Task file extraction - just extract @ paths and file references
             local prompt=$(echo "$params" | jq -r '.prompt // empty')
-            echo "$prompt" | grep -oE '(@[^[:space:]]+|/[^[:space:]]+|[^[:space:]]+\.[a-zA-Z0-9]+)' | head -20
+            
+            # Extract @ paths and explicit file patterns
+            echo "$prompt" | grep -oE '(@[^[:space:]]+|/[^[:space:]]*\.[a-zA-Z0-9]+|[^[:space:]]*\.[a-zA-Z0-9]+)'
             ;;
         *)
             echo ""
@@ -73,28 +75,30 @@ validate_json() {
 create_hook_response() {
     local action="$1"
     local result="$2"
-    local error="$3"
+    local reason="$3"
     
     case "$action" in
-        "continue")
-            echo '{"action": "continue"}'
+        "continue"|"approve")
+            # Normal tool execution continues
+            echo '{"decision": "approve"}'
             ;;
-        "replace")
+        "replace"|"block_with_result")
+            # Block tool execution and provide Gemini result
             if [ -n "$result" ]; then
-                jq -n --arg result "$result" '{"action": "replace", "result": $result}'
+                jq -n --arg reason "${reason:-Delegated to Gemini for large-scale analysis}" --arg result "$result" \
+                    '{"decision": "block", "reason": $reason, "result": $result}'
             else
-                echo '{"action": "continue", "error": "No result provided"}'
+                jq -n --arg reason "${reason:-No result provided}" \
+                    '{"decision": "block", "reason": $reason}'
             fi
             ;;
         "block")
-            if [ -n "$error" ]; then
-                jq -n --arg error "$error" '{"action": "block", "error": $error}'
-            else
-                echo '{"action": "block", "error": "Blocked by hook"}'
-            fi
+            # Block tool execution with error
+            jq -n --arg reason "${reason:-Blocked by hook}" \
+                '{"decision": "block", "reason": $reason}'
             ;;
         *)
-            echo '{"action": "continue", "error": "Unknown action"}'
+            echo '{"decision": "approve"}'
             ;;
     esac
 }

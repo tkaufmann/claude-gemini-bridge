@@ -1,7 +1,7 @@
 #!/bin/bash
 # ABOUTME: Converts Claude's @ notation to absolute paths for Gemini integration
 
-# Main function for path conversion
+# Main function for path conversion with security validation
 convert_claude_paths() {
     local input="$1"
     local base_dir="$2"
@@ -15,6 +15,20 @@ convert_claude_paths() {
     if [ -z "$base_dir" ]; then
         base_dir="$(pwd)"
     fi
+    
+    # Security: Block path traversal attempts  
+    if [[ "$input" =~ \.\./|\.\.\\ ]]; then
+        echo "" # Return empty on path traversal attempt
+        return 1
+    fi
+    
+    # Security: Validate base_dir is safe
+    case "$base_dir" in
+        /etc/*|/usr/*|/bin/*|/sbin/*|/root/*|/home/*/\.ssh/*)
+            echo "" # Block access to system directories
+            return 1
+            ;;
+    esac
     
     # Remove trailing slash from base_dir
     base_dir="${base_dir%/}"
@@ -36,9 +50,21 @@ convert_claude_paths() {
     echo "$input"
 }
 
-# Extracts file paths from text
+# Extracts file paths from text with security validation
 extract_files_from_text() {
     local text="$1"
+    
+    # Security: Block path traversal attempts
+    if [[ "$text" =~ \.\./|\.\.\\ ]]; then
+        echo "" # Return empty on path traversal attempt
+        return 1
+    fi
+    
+    # Security: Block absolute paths outside working directory
+    if [[ "$text" =~ /etc/|/usr/|/bin/|/sbin/|/root/|/home/ ]]; then
+        echo "" # Return empty on system path access
+        return 1
+    fi
     
     # Finds all file paths with extensions
     echo "$text" | grep -oE '(/[^[:space:]]+|[^[:space:]]+/[^[:space:]]+)\.[a-zA-Z0-9]+' | sort -u

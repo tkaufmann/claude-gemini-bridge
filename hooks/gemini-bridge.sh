@@ -101,7 +101,7 @@ esac
 
 debug_vars "extracted" TOOL_NAME FILES WORKING_DIR ORIGINAL_PROMPT
 
-# Decision: Should Gemini be used?
+# Decision: Should Gemini be used? Based on Claude's 200k vs Gemini's 1M token limit
 should_delegate_to_gemini() {
     local tool="$1"
     local files="$2"
@@ -113,48 +113,45 @@ should_delegate_to_gemini() {
         return 0
     fi
     
-    # Task tool with search/analysis tasks
-    if [[ "$tool" == "Task" ]]; then
-        if [[ "$prompt" =~ (search|find|analyze|summarize|suche|finde|analysiere|zusammenfasse) ]]; then
-            debug_log 2 "Task with search/analysis keywords detected"
-            return 0
-        fi
-    fi
-    
-    # Count available files
+    # Calculate estimated token count (rough estimate: 4 chars = 1 token)
+    local total_size=0
     local file_count=0
+    
     if [ -n "$files" ]; then
         file_count=$(count_files "$files")
+        for file in $files; do
+            if [ -f "$file" ]; then
+                local file_size=$(debug_file_size "$file")
+                total_size=$((total_size + file_size))
+            fi
+        done
     fi
     
-    debug_log 2 "File count: $file_count (minimum: $MIN_FILES_FOR_GEMINI)"
+    # Rough token estimation: 4 characters ≈ 1 token
+    local estimated_tokens=$((total_size / 4))
     
-    # Check minimum file count
-    if [ "$file_count" -lt "$MIN_FILES_FOR_GEMINI" ]; then
-        debug_log 2 "Not enough files for Gemini delegation"
-        return 1
-    fi
+    debug_log 2 "File count: $file_count, Total size: $total_size bytes, Estimated tokens: $estimated_tokens"
     
-    # Check total file size
-    local total_size=0
-    for file in $files; do
-        if [ -f "$file" ]; then
-            local file_size=$(debug_file_size "$file")
-            total_size=$((total_size + file_size))
+    # Claude's practical limit: ~150k tokens (leaving room for response)
+    local claude_token_limit=150000
+    # Gemini's practical limit: ~800k tokens (leaving room for response)  
+    local gemini_token_limit=800000
+    
+    # If estimated tokens exceed Claude's comfortable limit, use Gemini
+    if [ "$estimated_tokens" -gt "$claude_token_limit" ]; then
+        if [ "$estimated_tokens" -le "$gemini_token_limit" ]; then
+            debug_log 1 "Large content ($estimated_tokens tokens) - delegating to Gemini"
+            return 0
+        else
+            debug_log 1 "Content too large even for Gemini ($estimated_tokens tokens) - splitting needed"
+            return 1
         fi
-    done
-    
-    debug_log 2 "Total file size: $total_size bytes (min: $MIN_FILE_SIZE_FOR_GEMINI, max: $MAX_TOTAL_SIZE_FOR_GEMINI)"
-    
-    # Size checks
-    if [ "$total_size" -lt "$MIN_FILE_SIZE_FOR_GEMINI" ]; then
-        debug_log 2 "Files too small for Gemini delegation"
-        return 1
     fi
     
-    if [ "$total_size" -gt "$MAX_TOTAL_SIZE_FOR_GEMINI" ]; then
-        debug_log 2 "Files too large for Gemini delegation"
-        return 1
+    # For smaller content, check if it's a multi-file analysis task that benefits from Gemini
+    if [ "$file_count" -ge 5 ] && [[ "$tool" == "Task" ]]; then
+        debug_log 1 "Multi-file Task ($file_count files) - delegating to Gemini for better analysis"
+        return 0
     fi
     
     # Check for excluded file patterns
@@ -166,8 +163,8 @@ should_delegate_to_gemini() {
         fi
     done
     
-    debug_log 1 "All criteria met - delegating to Gemini"
-    return 0
+    debug_log 2 "Content size manageable for Claude - no delegation needed"
+    return 1
 }
 
 # Main decision
