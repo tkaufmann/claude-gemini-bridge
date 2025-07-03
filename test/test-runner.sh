@@ -7,16 +7,9 @@ echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Detect if we're running from development directory or installed location
-if [ -f "$SCRIPT_DIR/../hooks/gemini-bridge.sh" ]; then
-    # Development mode - use relative paths
-    BRIDGE_DIR="$SCRIPT_DIR/.."
-    echo "🔧 Running in development mode from: $BRIDGE_DIR"
-else
-    # Installed mode - use configured directory
-    BRIDGE_DIR="${CLAUDE_GEMINI_BRIDGE_DIR:-$HOME/.claude-gemini-bridge}"
-    echo "📦 Running in installed mode from: $BRIDGE_DIR"
-fi
+# Use current directory structure (git repo = installation)
+BRIDGE_DIR="$SCRIPT_DIR/.."
+echo "🔧 Running from: $BRIDGE_DIR"
 
 BRIDGE_SCRIPT="$BRIDGE_DIR/hooks/gemini-bridge.sh"
 MOCK_DIR="$SCRIPT_DIR/mock-tool-calls"
@@ -61,20 +54,29 @@ run_test() {
         return 1
     fi
     
-    # Check action
-    local action=$(echo "$result" | jq -r '.action // empty')
-    if [ "$action" != "$expected_action" ]; then
-        echo "❌ FAILED: Expected action '$expected_action', got '$action'"
+    # Check decision (new Claude Code hook format)
+    local decision=$(echo "$result" | jq -r '.decision // empty')
+    
+    # Map expected actions to decisions
+    local expected_decision
+    case "$expected_action" in
+        "continue") expected_decision="approve" ;;
+        "replace") expected_decision="block" ;;
+        *) expected_decision="$expected_action" ;;
+    esac
+    
+    if [ "$decision" != "$expected_decision" ]; then
+        echo "❌ FAILED: Expected decision '$expected_decision', got '$decision'"
         echo "   Response: $result"
         FAILED_TESTS=$((FAILED_TESTS + 1))
         return 1
     fi
     
-    # Additional validation for "replace" action
-    if [ "$action" = "replace" ]; then
+    # Additional validation for "block" decision (delegation to Gemini)
+    if [ "$decision" = "block" ]; then
         local has_result=$(echo "$result" | jq -r '.result // empty')
         if [ -z "$has_result" ]; then
-            echo "❌ FAILED: Replace action without result"
+            echo "❌ FAILED: Block decision without result"
             FAILED_TESTS=$((FAILED_TESTS + 1))
             return 1
         fi
@@ -130,7 +132,7 @@ echo "🧪 Test $((TOTAL_TESTS + 1)): Empty Input"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 EMPTY_RESULT=$(echo '' | "$BRIDGE_SCRIPT" 2>/dev/null)
 EMPTY_EXIT=$?
-if [ $EMPTY_EXIT -eq 0 ] && [[ "$EMPTY_RESULT" == *"continue"* ]]; then
+if [ $EMPTY_EXIT -eq 0 ] && [[ "$EMPTY_RESULT" == *"approve"* ]]; then
     echo "✅ PASSED: Empty input handled correctly"
     PASSED_TESTS=$((PASSED_TESTS + 1))
 else

@@ -1,10 +1,9 @@
 {
-  "tool": "Task",
-  "parameters": {
+  "tool_name": "Task",
+  "tool_input": {
     "prompt": "Search for all occurrences of 'config' in @./ and analyze the configuration patterns",
     "description": "Config pattern analysis"
   },
-  "context": {
-    "working_directory": "/Users/tim/Code/smartphones/code/claude2gemini"
-  }
+  "session_id": "test-session",
+  "transcript_path": "/tmp/test-transcript.jsonl"
 }

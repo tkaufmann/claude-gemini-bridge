@@ -1,11 +1,10 @@
 {
-  "tool": "Grep",
-  "parameters": {
+  "tool_name": "Grep",
+  "tool_input": {
     "pattern": "function.*config",
-    "path": "@src/",
+    "path": "/Users/tim/Code/smartphones/src/",
     "include": "*.php"
   },
-  "context": {
-    "working_directory": "/Users/tim/Code/smartphones"
-  }
+  "session_id": "test-session",
+  "transcript_path": "/tmp/test-transcript.jsonl"
 }

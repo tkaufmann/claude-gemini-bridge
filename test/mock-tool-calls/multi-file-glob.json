@@ -1,9 +1,9 @@
 {
-  "tool": "Glob",
-  "parameters": {
-    "pattern": "@**/*.php"
+  "tool_name": "Glob",
+  "tool_input": {
+    "pattern": "**/*.php",
+    "path": "/Users/tim/Code/smartphones"
   },
-  "context": {
-    "working_directory": "/Users/tim/Code/smartphones"
-  }
+  "session_id": "test-session",
+  "transcript_path": "/tmp/test-transcript.jsonl"
 }

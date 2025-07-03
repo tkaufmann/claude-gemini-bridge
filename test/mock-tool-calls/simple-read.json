@@ -1,9 +1,8 @@
 {
-  "tool": "Read",
-  "parameters": {
+  "tool_name": "Read",
+  "tool_input": {
     "file_path": "@src/main.py"
   },
-  "context": {
-    "working_directory": "/Users/tim/Code/test-project"
-  }
+  "session_id": "test-session",
+  "transcript_path": "/tmp/test-transcript.jsonl"
 }

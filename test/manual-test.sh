@@ -7,16 +7,9 @@ echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Detect if we're running from development directory or installed location
-if [ -f "$SCRIPT_DIR/../hooks/gemini-bridge.sh" ]; then
-    # Development mode - use relative paths
-    BRIDGE_DIR="$SCRIPT_DIR/.."
-    echo "🔧 Running in development mode from: $BRIDGE_DIR"
-else
-    # Installed mode - use configured directory
-    BRIDGE_DIR="${CLAUDE_GEMINI_BRIDGE_DIR:-$HOME/.claude-gemini-bridge}"
-    echo "📦 Running in installed mode from: $BRIDGE_DIR"
-fi
+# Use current directory structure (git repo = installation)
+BRIDGE_DIR="$SCRIPT_DIR/.."
+echo "🔧 Running from: $BRIDGE_DIR"
 
 BRIDGE_SCRIPT="$BRIDGE_DIR/hooks/gemini-bridge.sh"
 
