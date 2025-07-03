@@ -259,27 +259,33 @@ create_documentation() {
     cat > "$INSTALL_DIR/README.md" << 'EOF'
 # Claude-Gemini Bridge
 
-Automatische Integration zwischen Claude Code und Google Gemini für große Code-Analysen.
+Automatic integration between Claude Code and Google Gemini for large-scale code analysis.
 
 ## Quick Start
 
-1. **Teste die Installation:**
+1. **Test the installation:**
    ```bash
    $INSTALL_DIR/test/test-runner.sh
    ```
 
-2. **Interaktive Tests:**
+2. **Interactive tests:**
    ```bash
    $INSTALL_DIR/test/manual-test.sh
    ```
 
-3. **Nutze Claude Code normal** - große Analysen werden automatisch an Gemini delegiert!
+3. **Restart Claude Code** to load the new hooks:
+   ```bash
+   # If Claude Code is running, restart it completely
+   # The hooks are loaded once at startup
+   ```
 
-## Konfiguration
+4. **Use Claude Code normally** - large analyses will be automatically delegated to Gemini!
 
-- **Debug-Level ändern:** Editiere `hooks/config/debug.conf`
-- **Schwellwerte anpassen:** Editiere `MIN_FILES_FOR_GEMINI` in `debug.conf`
-- **Cache leeren:** `rm -rf cache/gemini/*`
+## Configuration
+
+- **Change debug level:** Edit `hooks/config/debug.conf`
+- **Adjust thresholds:** Edit `MIN_FILES_FOR_GEMINI` in `debug.conf`
+- **Clear cache:** `rm -rf cache/gemini/*`
 
 ## Logs
 
@@ -287,21 +293,21 @@ Automatische Integration zwischen Claude Code und Google Gemini für große Code
 - **Errors:** `tail -f logs/debug/errors.log`
 - **Captured Inputs:** `ls debug/captured/`
 
-## Deinstallation
+## Uninstallation
 
 ```bash
-# Hook entfernen
+# Remove hook
 jq 'del(.hooks)' ~/.claude/settings.local.json > /tmp/claude_settings && mv /tmp/claude_settings ~/.claude/settings.local.json
 
-# Bridge entfernen
+# Remove bridge
 rm -rf $INSTALL_DIR
 ```
 
 ## Support
 
 - **Troubleshooting:** `docs/TROUBLESHOOTING.md`
-- **Manuelle Tests:** `test/manual-test.sh`
-- **Logs prüfen:** `test/manual-test.sh` → Option 8
+- **Manual tests:** `test/manual-test.sh`
+- **Check logs:** `test/manual-test.sh` → Option 8
 EOF
 
     log "info" "README.md created"
@@ -317,13 +323,15 @@ show_summary() {
     echo "⚙️  Claude Settings: $CLAUDE_SETTINGS_FILE"
     echo ""
     echo "🧪 Next steps:"
-    echo "   1. Test the installation:"
+    echo "   1. **RESTART Claude Code** (hooks are loaded at startup)"
+    echo ""
+    echo "   2. Test the installation:"
     echo "      $INSTALL_DIR/test/test-runner.sh"
     echo ""
-    echo "   2. Interactive tests:"
+    echo "   3. Interactive tests:"
     echo "      $INSTALL_DIR/test/manual-test.sh"
     echo ""
-    echo "   3. Use Claude Code normally - large analyses will be automatically delegated to Gemini!"
+    echo "   4. Use Claude Code normally - large analyses will be automatically delegated to Gemini!"
     echo ""
     echo "📚 Documentation:"
     echo "   - README: $INSTALL_DIR/README.md"

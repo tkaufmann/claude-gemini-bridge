@@ -16,6 +16,9 @@ git clone https://github.com/your-username/claude-gemini-bridge.git
 cd claude-gemini-bridge
 ./install.sh
 
+# IMPORTANT: Restart Claude Code to load the new hooks
+# (Hooks are only loaded once at startup)
+
 # Test the installation
 ./test/test-runner.sh
 
