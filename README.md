@@ -190,18 +190,19 @@ EOF
 # Ensure script is executable (usually not needed after git clone)
 chmod +x /Users/yourname/claude-gemini-bridge/hooks/gemini-bridge.sh
 
-# Create project-specific bridge configuration
-cat > .claude-gemini.conf << 'EOF'
-MIN_FILES_FOR_GEMINI=2
-GEMINI_TIMEOUT=60
-DEBUG_LEVEL=1
+# Create project-specific environment setup (optional)
+cat > project-claude-setup.sh << 'EOF'
+export MIN_FILES_FOR_GEMINI=2
+export GEMINI_TIMEOUT=60
+export DEBUG_LEVEL=1
 EOF
+chmod +x project-claude-setup.sh
 ```
 
 **Benefits:**
-- ✅ Project-specific settings via `.claude-gemini.conf`
-- ✅ Different thresholds per project
-- ✅ Team-shareable configuration files
+- ✅ Project-specific settings via environment variables
+- ✅ Different thresholds per project  
+- ✅ Team-shareable setup scripts
 - ✅ No duplicate bridge installations
 - ✅ Project-local Claude settings override global ones
 
@@ -317,80 +318,60 @@ claude "summarize the architecture of this codebase"
 
 ### Project-Specific Configuration
 
-#### Configuration Hierarchy
+#### Configuration Sources
 
-The bridge supports flexible configuration through multiple layers:
+The bridge currently uses a single configuration source:
 
-```mermaid
-graph TD
-    A[Project .claude-gemini.conf] --> B[Global debug.conf]
-    B --> C[Environment Variables]
-    C --> D[Default Values]
-    
-    style A fill:#e8f5e8
-    style B fill:#e3f2fd
-    style C fill:#fff3e0
-    style D fill:#f3e5f5
-```
+- **Global Configuration**: `hooks/config/debug.conf` (in bridge installation directory)
+- **Runtime Overrides**: Environment variables can override config values when set
 
-#### Creating Project Configurations
+*Note: Project-specific `.claude-gemini.conf` files are not currently implemented, but you can use environment variables for project-specific overrides.*
 
-Create `.claude-gemini.conf` in your project root:
+#### Project-Specific Overrides via Environment Variables
+
+For project-specific settings, use environment variables in your project:
 
 ```bash
 # === Large Project Configuration ===
-# For projects with many files - be more selective
-MIN_FILES_FOR_GEMINI=10              # Higher threshold
-MIN_FILE_SIZE_FOR_GEMINI=20480       # 20KB minimum
-GEMINI_TIMEOUT=60                    # Longer timeout
-DEBUG_LEVEL=1                        # Less verbose
+# Set environment variables before using Claude Code
+export MIN_FILES_FOR_GEMINI=10
+export MIN_FILE_SIZE_FOR_GEMINI=20480
+export GEMINI_TIMEOUT=60
+export DEBUG_LEVEL=1
 
 # === Sensitive Project Configuration ===
-# For projects with confidential code
-GEMINI_ENABLED=false                 # Completely disable Gemini
-DEBUG_LEVEL=0                        # No logging
+# Completely disable Gemini for confidential projects  
+export DRY_RUN=true                  # Prevents actual Gemini calls
+export DEBUG_LEVEL=0                 # No logging
 
 # === Development Project Configuration ===
-# For active development with frequent analysis
-MIN_FILES_FOR_GEMINI=2               # Lower threshold
-GEMINI_CACHE_TTL=1800               # 30-minute cache
-DEBUG_LEVEL=3                        # Maximum verbosity
-CAPTURE_INPUTS=true                  # Save all inputs for debugging
-
-# === Team Project Configuration ===
-# Shared settings for development teams
-MIN_FILES_FOR_GEMINI=5
-GEMINI_TIMEOUT=45
-GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|internal/*|private/*"
+# Lower thresholds for active development
+export MIN_FILES_FOR_GEMINI=2
+export GEMINI_CACHE_TTL=1800        # 30-minute cache
+export DEBUG_LEVEL=3                 # Maximum verbosity
+export CAPTURE_INPUTS=true           # Save all inputs for debugging
 ```
 
-#### Configuration Examples by Project Type
+#### Project-Specific Environment Setup
 
-**React/TypeScript Project:**
+**Via shell script in project root:**
 ```bash
-# .claude-gemini.conf
-MIN_FILES_FOR_GEMINI=3
-MIN_FILE_SIZE_FOR_GEMINI=8192        # 8KB for smaller components
-GEMINI_EXCLUDE_PATTERNS="*.secret|*.env|node_modules/*|dist/*|build/*"
-GEMINI_TIMEOUT=30
+# project-claude-setup.sh
+export MIN_FILES_FOR_GEMINI=3
+export GEMINI_TIMEOUT=30
+export DEBUG_LEVEL=1
+
+# Source before using Claude
+source ./project-claude-setup.sh
+claude "analyze this project"
 ```
 
-**Large Monorepo:**
+**Via .envrc (if using direnv):**
 ```bash
-# .claude-gemini.conf  
-MIN_FILES_FOR_GEMINI=15              # Only very large analyses
-MIN_FILE_SIZE_FOR_GEMINI=51200       # 50KB minimum
-GEMINI_TIMEOUT=90                    # Longer processing time
-GEMINI_MAX_FILES=50                  # More files per call
-```
-
-**Security-Conscious Project:**
-```bash
-# .claude-gemini.conf
-GEMINI_ENABLED=false                 # Disable completely
-# OR for limited use:
-# MIN_FILES_FOR_GEMINI=20            # Very high threshold
-# GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|src/auth/*|config/*"
+# .envrc
+export MIN_FILES_FOR_GEMINI=5
+export GEMINI_TIMEOUT=45
+export DEBUG_LEVEL=2
 ```
 
 ### Debug Mode
