@@ -1,35 +1,35 @@
-# Troubleshooting Guide für Claude-Gemini Bridge
+# Troubleshooting Guide for Claude-Gemini Bridge
 
-## 🔧 Häufige Probleme und Lösungen
+## 🔧 Common Problems and Solutions
 
 ### Installation & Setup
 
-#### Hook wird nicht ausgeführt
-**Symptom:** Claude verhält sich normal, aber Gemini wird nie aufgerufen
+#### Hook not executing
+**Symptom:** Claude behaves normally, but Gemini is never called
 
-**Lösungsschritte:**
-1. Prüfe Claude Settings:
+**Solution steps:**
+1. Check Claude Settings:
    ```bash
    cat ~/.claude/settings.json
    ```
    
-2. Teste Hook manuell:
+2. Test hook manually:
    ```bash
    echo '{"tool_name":"Read","tool_input":{"file_path":"test.txt"},"session_id":"test"}' | ./hooks/gemini-bridge.sh
    ```
 
-3. Prüfe Berechtigungen:
+3. Check permissions:
    ```bash
    ls -la hooks/gemini-bridge.sh
-   # Sollte ausführbar sein (x-Flag)
+   # Should be executable (x-flag)
    ```
 
-4. Prüfe Hook-Konfiguration:
+4. Check hook configuration:
    ```bash
    jq '.hooks' ~/.claude/settings.json
    ```
 
-**Lösung:** Re-Installation ausführen:
+**Solution:** Run re-installation:
 ```bash
 ./install.sh
 ```
@@ -37,324 +37,325 @@
 ---
 
 #### "command not found: jq"
-**Symptom:** Fehler beim Ausführen von Scripts
+**Symptom:** Error when running scripts
 
-**Lösung:**
+**Solution:**
 - **macOS:** `brew install jq`
 - **Linux:** `sudo apt-get install jq`
-- **Alternative:** Nutze den Installer, der jq-Abhängigkeiten prüft
+- **Alternative:** Use the installer, which checks jq dependencies
 
 ---
 
 #### "command not found: gemini"
-**Symptom:** Bridge kann Gemini nicht finden
+**Symptom:** Bridge cannot find Gemini
 
-**Lösungsschritte:**
-1. Prüfe Gemini Installation:
+**Solution steps:**
+1. Check Gemini installation:
    ```bash
    which gemini
    gemini --version
    ```
 
-2. Teste Gemini manuell:
+2. Test Gemini manually:
    ```bash
    echo "Test" | gemini -p "Say hello"
    ```
 
-3. Prüfe PATH:
+3. Check PATH:
    ```bash
    echo $PATH
    ```
 
-**Lösung:** Installiere Gemini CLI oder füge zu PATH hinzu
+**Solution:** Install Gemini CLI or add to PATH
 
 ---
 
-### Gemini-Integration
+### Gemini Integration
 
-#### Gemini antwortet nicht
-**Symptom:** Hook läuft, aber Gemini gibt keine Antwort zurück
+#### Gemini not responding
+**Symptom:** Hook runs, but Gemini doesn't return responses
 
-**Debug-Schritte:**
-1. Aktiviere verbose Logging:
+**Debug steps:**
+1. Enable verbose logging:
    ```bash
-   # In ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+   # In hooks/config/debug.conf
    DEBUG_LEVEL=3
    ```
 
-2. Prüfe Gemini-Logs:
+2. Check Gemini logs:
    ```bash
-   tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log | grep -i gemini
+   tail -f logs/debug/$(date +%Y%m%d).log | grep -i gemini
    ```
 
-3. Teste Gemini API-Key:
+3. Test Gemini API key:
    ```bash
    gemini "test" -p "Hello"
    ```
 
-**Häufige Ursachen:**
-- Fehlender oder ungültiger API-Key
-- Rate-Limiting erreicht
-- Netzwerkprobleme
-- Gemini-Service nicht verfügbar
+**Common causes:**
+- Missing or invalid API key
+- Rate limiting reached
+- Network problems
+- Gemini service unavailable
 
 ---
 
 #### "Rate limiting: sleeping Xs"
-**Symptom:** Bridge wartet zwischen Aufrufen
+**Symptom:** Bridge waits between calls
 
-**Erklärung:** Normal! Verhindert API-Überlastung.
+**Explanation:** Normal! Prevents API overload.
 
-**Anpassen:**
+**Adjust:**
 ```bash
 # In debug.conf
-GEMINI_RATE_LIMIT=0.5  # Reduziere auf 0.5 Sekunden
+GEMINI_RATE_LIMIT=0.5  # Reduce to 0.5 seconds
 ```
 
 ---
 
-#### Cache-Probleme
-**Symptom:** Veraltete Antworten von Gemini
+#### Cache problems
+**Symptom:** Outdated responses from Gemini
 
-**Lösung:**
+**Solution:**
 ```bash
-# Cache komplett leeren
-rm -rf ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/*
+# Clear cache completely
+rm -rf cache/gemini/*
 
-# Oder Cache-TTL reduzieren (in debug.conf)
-GEMINI_CACHE_TTL=1800  # 30 Minuten statt 1 Stunde
+# Or reduce cache TTL (in debug.conf)
+GEMINI_CACHE_TTL=1800  # 30 minutes instead of 1 hour
 ```
 
 ---
 
-### Pfad-Konvertierung
+### Path Conversion
 
-#### @ Pfade werden nicht konvertiert
-**Symptom:** Gemini kann Dateien nicht finden
+#### @ paths not converted
+**Symptom:** Gemini cannot find files
 
 **Debug:**
-1. Teste Pfad-Konvertierung isoliert:
+1. Test path conversion in isolation:
    ```bash
-   cd ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/lib
+   cd hooks/lib
    source path-converter.sh
    convert_claude_paths "@src/main.py" "/Users/tim/project"
    ```
 
-2. Prüfe Working Directory in Logs:
+2. Check working directory in logs:
    ```bash
-   grep "Working directory" ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
+   grep "Working directory" logs/debug/$(date +%Y%m%d).log
    ```
 
-**Häufige Ursachen:**
-- Fehlendes working_directory im Tool-Call
-- Relative Pfade ohne @ Prefix
-- Falsche Verzeichnisstrukturen
+**Common causes:**
+- Missing working_directory in tool call
+- Relative paths without @ prefix
+- Incorrect directory structures
 
 ---
 
-### Performance & Verhalten
+### Performance & Behavior
 
-#### Gemini wird zu oft aufgerufen
-**Symptom:** Jeder kleine Read-Befehl geht an Gemini
+#### Gemini called too often
+**Symptom:** Every small Read command goes to Gemini
 
-**Anpassungen in debug.conf:**
+**Adjustments in debug.conf:**
 ```bash
-MIN_FILES_FOR_GEMINI=5        # Erhöhe Mindest-Dateianzahl
-MIN_FILE_SIZE_FOR_GEMINI=50240  # Erhöhe Mindest-Dateigröße
+MIN_FILES_FOR_GEMINI=5        # Increase minimum file count
+CLAUDE_TOKEN_LIMIT=100000     # Increase token threshold
 ```
 
 ---
 
-#### Gemini wird nie aufgerufen
-**Symptom:** Auch große Analysen gehen nicht an Gemini
+#### Gemini never called
+**Symptom:** Even large analyses don't go to Gemini
 
 **Debug:**
-1. Aktiviere DRY_RUN Modus:
+1. Enable DRY_RUN mode:
    ```bash
    # In debug.conf
    DRY_RUN=true
    ```
 
-2. Prüfe Entscheidungslogik:
+2. Check decision logic:
    ```bash
-   grep "should_delegate_to_gemini" ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
+   grep "should_delegate_to_gemini" logs/debug/$(date +%Y%m%d).log
    ```
 
-**Anpassungen:**
+**Adjustments:**
 ```bash
-MIN_FILES_FOR_GEMINI=1        # Reduziere Schwellwerte
-MIN_FILE_SIZE_FOR_GEMINI=1024 # 1KB
+MIN_FILES_FOR_GEMINI=1        # Reduce thresholds
+CLAUDE_TOKEN_LIMIT=10000      # Lower token limit
 ```
 
 ---
 
-## 🔍 Debug-Workflow
+## 🔍 Debug Workflow
 
-### 1. Problem reproduzieren
+### 1. Reproduce problem
 ```bash
-# Aktiviere Input-Capturing
+# Enable input capturing
 # In debug.conf: CAPTURE_INPUTS=true
 
-# Führe problematischen Claude-Befehl aus
-# Input wird automatisch gespeichert
+# Run problematic Claude command
+# Input will be automatically saved
 ```
 
-### 2. Logs analysieren
+### 2. Analyze logs
 ```bash
-# Aktuelle Debug-Logs
-tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
+# Current debug logs
+tail -f logs/debug/$(date +%Y%m%d).log
 
-# Error-Logs
-tail -f ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/errors.log
+# Error logs
+tail -f logs/debug/errors.log
 
-# Alle Logs des Tages
-less ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/$(date +%Y%m%d).log
+# All logs of the day
+less logs/debug/$(date +%Y%m%d).log
 ```
 
-### 3. Isoliert testen
+### 3. Test in isolation
 ```bash
-# Interaktive Tests
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/test/manual-test.sh
+# Interactive tests
+./test/manual-test.sh
 
-# Automatisierte Tests
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/test/test-runner.sh
+# Automated tests
+./test/test-runner.sh
 
-# Replay gespeicherter Inputs
-ls ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/debug/captured/
-cat ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/debug/captured/FILENAME.json | ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/gemini-bridge.sh
+# Replay saved inputs
+ls debug/captured/
+cat debug/captured/FILENAME.json | ./hooks/gemini-bridge.sh
 ```
 
-### 4. Schritt-für-Schritt Debugging
+### 4. Step-by-step debugging
 ```bash
-# Höchstes Debug-Level
+# Highest debug level
 # In debug.conf: DEBUG_LEVEL=3
 
-# Dry-Run Modus (kein echter Gemini-Aufruf)
+# Dry-run mode (no actual Gemini call)
 # In debug.conf: DRY_RUN=true
 
-# Einzelne Library-Funktionen testen
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/lib/path-converter.sh
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/lib/json-parser.sh
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/lib/gemini-wrapper.sh
+# Test individual library functions
+./hooks/lib/path-converter.sh
+./hooks/lib/json-parser.sh
+./hooks/lib/gemini-wrapper.sh
 ```
 
 ---
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-### Debug-Level
+### Debug levels
 ```bash
-# In ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+# In hooks/config/debug.conf
 
-DEBUG_LEVEL=0  # Kein Debug-Output
-DEBUG_LEVEL=1  # Basis-Informationen (Standard)
-DEBUG_LEVEL=2  # Detaillierte Informationen
-DEBUG_LEVEL=3  # Vollständiges Tracing
+DEBUG_LEVEL=0  # No debug output
+DEBUG_LEVEL=1  # Basic information (default)
+DEBUG_LEVEL=2  # Detailed information
+DEBUG_LEVEL=3  # Complete tracing
 ```
 
-### Gemini-Einstellungen
+### Gemini settings
 ```bash
-GEMINI_CACHE_TTL=3600      # Cache-Zeit in Sekunden
-GEMINI_TIMEOUT=30          # Timeout pro Aufruf
-GEMINI_RATE_LIMIT=1        # Sekunden zwischen Aufrufen
-GEMINI_MAX_FILES=20        # Max Dateien pro Aufruf
+GEMINI_CACHE_TTL=3600      # Cache time in seconds
+GEMINI_TIMEOUT=30          # Timeout per call
+GEMINI_RATE_LIMIT=1        # Seconds between calls
+GEMINI_MAX_FILES=20        # Max files per call
 ```
 
-### Entscheidungskriterien
+### Decision criteria
 ```bash
-MIN_FILES_FOR_GEMINI=3           # Mindest-Dateianzahl
-MIN_FILE_SIZE_FOR_GEMINI=10240   # Mindest-Gesamtgröße (10KB)
-MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Max-Gesamtgröße (10MB)
+MIN_FILES_FOR_GEMINI=3           # Minimum file count
+CLAUDE_TOKEN_LIMIT=50000         # Token threshold (~200KB)
+GEMINI_TOKEN_LIMIT=800000        # Max tokens for Gemini
+MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Max total size (10MB)
 
-# Ausgeschlossene Dateien
+# Excluded files
 GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|*.password"
 ```
 
 ---
 
-## 🧹 Wartung
+## 🧹 Maintenance
 
-### Cache bereinigen
+### Clear cache
 ```bash
-# Manuell
-rm -rf ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/cache/gemini/*
+# Manually
+rm -rf cache/gemini/*
 
-# Automatisch (über debug.conf)
+# Automatically (via debug.conf)
 AUTO_CLEANUP_CACHE=true
 CACHE_MAX_AGE_HOURS=24
 ```
 
-### Logs bereinigen
+### Clear logs
 ```bash
-# Manuell
-rm -rf ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/*
+# Manually
+rm -rf logs/debug/*
 
-# Automatisch (über debug.conf)
+# Automatically (via debug.conf)
 AUTO_CLEANUP_LOGS=true
 LOG_MAX_AGE_DAYS=7
 ```
 
-### Captured Inputs bereinigen
+### Clear captured inputs
 ```bash
-rm -rf ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/debug/captured/*
+rm -rf debug/captured/*
 ```
 
 ---
 
-## 🆘 Notfall-Deaktivierung
+## 🆘 Emergency Deactivation
 
-### Hook temporär deaktivieren
+### Temporarily disable hook
 ```bash
-# Backup der Settings
-cp ~/.claude/settings.local.json ~/.claude/settings.local.json.backup
+# Backup settings
+cp ~/.claude/settings.json ~/.claude/settings.json.backup
 
-# Hook entfernen
-jq 'del(.hooks)' ~/.claude/settings.local.json > /tmp/claude_settings
-mv /tmp/claude_settings ~/.claude/settings.local.json
+# Remove hook
+jq 'del(.hooks)' ~/.claude/settings.json > /tmp/claude_settings
+mv /tmp/claude_settings ~/.claude/settings.json
 ```
 
-### Hook wieder aktivieren
+### Re-enable hook
 ```bash
-# Settings wiederherstellen
-cp ~/.claude/settings.local.json.backup ~/.claude/settings.local.json
+# Restore settings
+cp ~/.claude/settings.json.backup ~/.claude/settings.json
 
-# Oder neu installieren
-${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/install.sh
+# Or reinstall
+./install.sh
 ```
 
-### Komplett deinstallieren
+### Complete uninstallation
 ```bash
-# Hook entfernen
-jq 'del(.hooks)' ~/.claude/settings.local.json > /tmp/claude_settings
-mv /tmp/claude_settings ~/.claude/settings.local.json
+# Remove hook
+jq 'del(.hooks)' ~/.claude/settings.json > /tmp/claude_settings
+mv /tmp/claude_settings ~/.claude/settings.json
 
-# Bridge entfernen
-rm -rf ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}
+# Remove bridge
+rm -rf ~/claude-gemini-bridge
 ```
 
 ---
 
 ## 📞 Support & Reporting
 
-### Log-Sammlung für Support
+### Collect logs for support
 ```bash
-# Erstelle Debug-Paket
+# Create debug package
 tar -czf claude-gemini-debug-$(date +%Y%m%d).tar.gz \
-  ~/.claude/settings.local.json \
-  ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/logs/debug/ \
-  ${CLAUDE_GEMINI_BRIDGE_DIR:-~/.claude-gemini-bridge}/hooks/config/debug.conf
+  ~/.claude/settings.json \
+  logs/debug/ \
+  hooks/config/debug.conf
 ```
 
-### Hilfreiche Informationen
+### Helpful information
 - Claude Version: `claude --version`
 - Gemini Version: `gemini --version`
-- Betriebssystem: `uname -a`
+- Operating System: `uname -a`
 - Shell: `echo $SHELL`
 - PATH: `echo $PATH`
 
-### Häufige Fehlermeldungen
-- **"Invalid JSON received"**: Input-Validation fehlgeschlagen
-- **"Gemini initialization failed"**: Gemini CLI nicht verfügbar
-- **"Files too large/small"**: Schwellwerte nicht erfüllt
-- **"Rate limiting"**: Normal, zeigt korrekte Funktion
-- **"Cache expired"**: Normal, Cache wird erneuert
+### Common error messages
+- **"Invalid JSON received"**: Input validation failed
+- **"Gemini initialization failed"**: Gemini CLI not available
+- **"Files too large/small"**: Thresholds not met
+- **"Rate limiting"**: Normal, shows correct function
+- **"Cache expired"**: Normal, cache being renewed
