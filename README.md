@@ -304,9 +304,9 @@ Simply use Claude Code normally - the bridge works transparently:
 
 ```bash
 # These commands will automatically use Gemini for large analyses:
-claude "analyze all TypeScript files and identify patterns"
-claude "find security issues in @src/ directory" 
-claude "summarize the architecture of this codebase"
+claude -p "analyze all TypeScript files and identify patterns"
+claude -p "find security issues in @src/ directory" 
+claude -p "summarize the architecture of this codebase"
 ```
 
 ### Project-Specific Configuration
