@@ -648,12 +648,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 git clone https://github.com/your-username/claude-gemini-bridge.git
 cd claude-gemini-bridge
 
-# Install development dependencies
-brew install shellcheck shfmt
-
-# Set up pre-commit hooks
-./scripts/setup-dev.sh
-
 # Run tests before committing
 ./test/test-runner.sh
 ```
