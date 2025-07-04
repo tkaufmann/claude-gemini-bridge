@@ -192,9 +192,9 @@ chmod +x /Users/yourname/claude-gemini-bridge/hooks/gemini-bridge.sh
 
 # Create project-specific environment setup (optional)
 cat > project-claude-setup.sh << 'EOF'
-export MIN_FILES_FOR_GEMINI=2
-export GEMINI_TIMEOUT=60
 export DEBUG_LEVEL=1
+export GEMINI_TIMEOUT=60
+export DRY_RUN=false
 EOF
 chmod +x project-claude-setup.sh
 ```
@@ -252,44 +252,48 @@ The installer automatically:
 
 ## ⚙️ Configuration
 
-### Complete Configuration Reference
+### Configuration Reference
 
-Edit `hooks/config/debug.conf` in your installation directory:
+**Currently Configurable** (edit `hooks/config/debug.conf`):
 
 ```bash
-# Debug configuration
+# Debug configuration (WORKING)
 DEBUG_LEVEL=2                    # 0=off, 1=basic, 2=verbose, 3=trace
 CAPTURE_INPUTS=true              # Save hook inputs for analysis
 MEASURE_PERFORMANCE=true         # Enable timing measurements
 DRY_RUN=false                   # Test mode without Gemini calls
 
-# Delegation thresholds (optimized for Claude 200k context)
-MIN_FILES_FOR_GEMINI=3          # Delegate Task operations with ≥3 files
-MIN_FILE_SIZE_FOR_GEMINI=5120   # Minimum 5KB total size (was 10KB)
-MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Maximum 10MB total size
-
-# Gemini API settings
+# Gemini API settings (WORKING)
 GEMINI_CACHE_TTL=3600           # Cache responses for 1 hour
 GEMINI_RATE_LIMIT=1             # 1 second between API calls
 GEMINI_TIMEOUT=30               # 30 second API timeout
 GEMINI_MAX_FILES=20             # Maximum files per Gemini call
 
-# File security (never sent to Gemini)
+# File security (WORKING)
 GEMINI_EXCLUDE_PATTERNS="*.secret|*.key|*.env|*.password|*.token|*.pem|*.p12"
 
-# Automatic maintenance
+# Automatic maintenance (WORKING)
 AUTO_CLEANUP_CACHE=true         # Enable cache cleanup
 CACHE_MAX_AGE_HOURS=24          # Clean cache older than 24h
 AUTO_CLEANUP_LOGS=true          # Enable log rotation
 LOG_MAX_AGE_DAYS=7              # Keep logs for 7 days
 ```
 
+**Currently Hardcoded** (not configurable):
+
+```bash
+# Delegation thresholds (HARDCODED in gemini-bridge.sh)
+# Token limit: 50k tokens (~200KB)
+# File count: 3 files for Task operations
+# Max size: 10MB, 800k tokens for Gemini
+```
+
 ### Advanced Configuration
 
 **Current Implementation:**
 - Single global configuration file: `hooks/config/debug.conf`
-- Environment variables override config values at runtime
-- No project-specific config files (yet)
+- Delegation thresholds are hardcoded in the bridge script
+- No project-specific configuration (yet)
 
 ## 💡 Usage Examples
 
@@ -311,56 +315,32 @@ claude "summarize the architecture of this codebase"
 The bridge currently uses a single configuration source:
 
 - **Global Configuration**: `hooks/config/debug.conf` (in bridge installation directory)
-- **Runtime Overrides**: Environment variables can override config values when set
+- **Runtime Overrides**: Environment variables can override some config values
 
-*Note: Project-specific `.claude-gemini.conf` files are not currently implemented, but you can use environment variables for project-specific overrides.*
+*Note: Core delegation thresholds are hardcoded and cannot be configured.*
 
-#### Project-Specific Overrides via Environment Variables
+#### Project-Specific Settings
 
-For project-specific settings, use environment variables in your project:
+Currently, delegation thresholds (file count, token limits) are hardcoded and cannot be overridden per project. 
 
-```bash
-# === Large Project Configuration ===
-# Set environment variables before using Claude Code
-export MIN_FILES_FOR_GEMINI=10
-export MIN_FILE_SIZE_FOR_GEMINI=20480
-export GEMINI_TIMEOUT=60
-export DEBUG_LEVEL=1
+**What you CAN configure per project:**
 
-# === Sensitive Project Configuration ===
-# Completely disable Gemini for confidential projects  
-export DRY_RUN=true                  # Prevents actual Gemini calls
-export DEBUG_LEVEL=0                 # No logging
-
-# === Development Project Configuration ===
-# Lower thresholds for active development
-export MIN_FILES_FOR_GEMINI=2
-export GEMINI_CACHE_TTL=1800        # 30-minute cache
-export DEBUG_LEVEL=3                 # Maximum verbosity
-export CAPTURE_INPUTS=true           # Save all inputs for debugging
-```
-
-#### Project-Specific Environment Setup
-
-**Via shell script in project root:**
 ```bash
 # project-claude-setup.sh
-export MIN_FILES_FOR_GEMINI=3
-export GEMINI_TIMEOUT=30
-export DEBUG_LEVEL=1
+export DEBUG_LEVEL=3                 # Increase logging for this project
+export DRY_RUN=true                  # Disable Gemini calls (testing)
+export GEMINI_TIMEOUT=60             # Longer timeout for complex analysis
+export CAPTURE_INPUTS=true           # Save inputs for debugging
 
 # Source before using Claude
 source ./project-claude-setup.sh
 claude "analyze this project"
 ```
 
-**Via .envrc (if using direnv):**
-```bash
-# .envrc
-export MIN_FILES_FOR_GEMINI=5
-export GEMINI_TIMEOUT=45
-export DEBUG_LEVEL=2
-```
+**What you CANNOT configure** (hardcoded):
+- File count threshold (always 3 files)
+- Token limit (always 50k tokens)
+- File size limits (always 10MB max)
 
 ### Debug Mode
 
