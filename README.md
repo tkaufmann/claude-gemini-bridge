@@ -286,22 +286,10 @@ LOG_MAX_AGE_DAYS=7              # Keep logs for 7 days
 
 ### Advanced Configuration
 
-```mermaid
-graph LR
-    subgraph "Configuration Layers"
-        GC[Global Config<br/>debug.conf]
-        PC[Project Config<br/>.claude-gemini.conf]
-        EC[Environment<br/>Variables]
-    end
-    
-    EC --> PC
-    PC --> GC
-    GC --> Default[Default Values]
-    
-    style GC fill:#e3f2fd
-    style PC fill:#f3e5f5
-    style EC fill:#e8f5e8
-```
+**Current Implementation:**
+- Single global configuration file: `hooks/config/debug.conf`
+- Environment variables override config values at runtime
+- No project-specific config files (yet)
 
 ## 💡 Usage Examples
 
