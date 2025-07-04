@@ -196,7 +196,7 @@ export DEBUG_LEVEL=1
 export GEMINI_TIMEOUT=60
 export DRY_RUN=false
 EOF
-chmod +x project-claude-setup.sh
+# Note: No chmod needed - script will be sourced, not executed
 ```
 
 **Benefits:**
@@ -336,7 +336,7 @@ export MIN_FILES_FOR_GEMINI=5        # Require more files before delegating
 export CLAUDE_TOKEN_LIMIT=30000      # Delegate earlier (smaller limit)
 export MAX_TOTAL_SIZE_FOR_GEMINI=5242880  # 5MB limit for this project
 
-# Source before using Claude
+# Source before using Claude (important: use 'source', not './')
 source ./project-claude-setup.sh
 claude "analyze this project"
 ```
