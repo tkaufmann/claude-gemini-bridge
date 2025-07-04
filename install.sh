@@ -43,15 +43,34 @@ error_exit() {
 check_requirements() {
     log "info" "Checking prerequisites..."
     
-    # Claude CLI
-    if ! command -v claude &> /dev/null; then
+    # Claude CLI - check multiple ways
+    local claude_found=false
+    local claude_location=""
+    
+    # First check if claude command exists (handles PATH and aliases)
+    if which claude &> /dev/null; then
+        claude_found=true
+        claude_location=$(which claude)
+    # Check common installation locations
+    elif [ -x "$HOME/.claude/local/claude" ]; then
+        claude_found=true
+        claude_location="$HOME/.claude/local/claude"
+    elif [ -x "/usr/local/bin/claude" ]; then
+        claude_found=true
+        claude_location="/usr/local/bin/claude"
+    elif [ -x "/opt/homebrew/bin/claude" ]; then
+        claude_found=true
+        claude_location="/opt/homebrew/bin/claude"
+    fi
+    
+    if [ "$claude_found" = false ]; then
         error_exit "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
     fi
-    log "debug" "Claude CLI found: $(which claude)"
+    log "debug" "Claude CLI found: $claude_location"
     
     # Gemini CLI
     if ! command -v gemini &> /dev/null; then
-        error_exit "Gemini CLI not found. Visit: https://github.com/google/generative-ai-cli"
+        error_exit "Gemini CLI not found. Visit: https://github.com/google-gemini/gemini-cli"
     fi
     log "debug" "Gemini CLI found: $(which gemini)"
     
