@@ -160,25 +160,32 @@ should_delegate_to_gemini() {
     
     debug_log 2 "File count: $file_count, Total size: $total_size bytes, Estimated tokens: $estimated_tokens"
     
-    # Claude's practical limit: ~50k tokens (leaving room for response)
-    local claude_token_limit=50000
-    # Gemini's practical limit: ~800k tokens (leaving room for response)  
-    local gemini_token_limit=800000
+    # Use configurable token limits
+    local claude_token_limit=${CLAUDE_TOKEN_LIMIT:-50000}
+    local gemini_token_limit=${GEMINI_TOKEN_LIMIT:-800000}
+    local min_files_threshold=${MIN_FILES_FOR_GEMINI:-3}
+    local max_total_size=${MAX_TOTAL_SIZE_FOR_GEMINI:-10485760}
+    
+    # Check if total size exceeds maximum limit
+    if [ "$total_size" -gt "$max_total_size" ]; then
+        debug_log 1 "Content too large ($total_size bytes > $max_total_size) - exceeds maximum size limit"
+        return 1
+    fi
     
     # If estimated tokens exceed Claude's comfortable limit, use Gemini
     if [ "$estimated_tokens" -gt "$claude_token_limit" ]; then
         if [ "$estimated_tokens" -le "$gemini_token_limit" ]; then
-            debug_log 1 "Large content ($estimated_tokens tokens) - delegating to Gemini"
+            debug_log 1 "Large content ($estimated_tokens tokens > $claude_token_limit) - delegating to Gemini"
             return 0
         else
-            debug_log 1 "Content too large even for Gemini ($estimated_tokens tokens) - splitting needed"
+            debug_log 1 "Content too large even for Gemini ($estimated_tokens tokens > $gemini_token_limit) - splitting needed"
             return 1
         fi
     fi
     
     # For smaller content, check if it's a multi-file analysis task that benefits from Gemini
-    if [ "$file_count" -ge 3 ] && [[ "$tool" == "Task" ]]; then
-        debug_log 1 "Multi-file Task ($file_count files) - delegating to Gemini for better analysis"
+    if [ "$file_count" -ge "$min_files_threshold" ] && [[ "$tool" == "Task" ]]; then
+        debug_log 1 "Multi-file Task ($file_count files >= $min_files_threshold) - delegating to Gemini for better analysis"
         return 0
     fi
     

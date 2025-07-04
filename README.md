@@ -279,21 +279,22 @@ AUTO_CLEANUP_LOGS=true          # Enable log rotation
 LOG_MAX_AGE_DAYS=7              # Keep logs for 7 days
 ```
 
-**Currently Hardcoded** (not configurable):
+**Delegation Settings** (configurable via debug.conf):
 
 ```bash
-# Delegation thresholds (HARDCODED in gemini-bridge.sh)
-# Token limit: 50k tokens (~200KB)
-# File count: 3 files for Task operations
-# Max size: 10MB, 800k tokens for Gemini
+# Delegation thresholds (CONFIGURABLE)
+MIN_FILES_FOR_GEMINI=3          # At least 3 files for Task operations
+CLAUDE_TOKEN_LIMIT=50000        # Token limit for Claude delegation (~200KB)  
+GEMINI_TOKEN_LIMIT=800000       # Max tokens Gemini can handle
+MAX_TOTAL_SIZE_FOR_GEMINI=10485760  # Max 10MB total size
 ```
 
 ### Advanced Configuration
 
 **Current Implementation:**
 - Single global configuration file: `hooks/config/debug.conf`
-- Delegation thresholds are hardcoded in the bridge script
-- No project-specific configuration (yet)
+- All settings configurable via environment variables
+- Full project-specific configuration support
 
 ## 💡 Usage Examples
 
@@ -315,13 +316,11 @@ claude "summarize the architecture of this codebase"
 The bridge currently uses a single configuration source:
 
 - **Global Configuration**: `hooks/config/debug.conf` (in bridge installation directory)
-- **Runtime Overrides**: Environment variables can override some config values
-
-*Note: Core delegation thresholds are hardcoded and cannot be configured.*
+- **Runtime Overrides**: Environment variables can override all config values including delegation thresholds
 
 #### Project-Specific Settings
 
-Currently, delegation thresholds (file count, token limits) are hardcoded and cannot be overridden per project. 
+All delegation thresholds can now be overridden via environment variables. 
 
 **What you CAN configure per project:**
 
@@ -332,15 +331,15 @@ export DRY_RUN=true                  # Disable Gemini calls (testing)
 export GEMINI_TIMEOUT=60             # Longer timeout for complex analysis
 export CAPTURE_INPUTS=true           # Save inputs for debugging
 
+# Override delegation thresholds
+export MIN_FILES_FOR_GEMINI=5        # Require more files before delegating
+export CLAUDE_TOKEN_LIMIT=30000      # Delegate earlier (smaller limit)
+export MAX_TOTAL_SIZE_FOR_GEMINI=5242880  # 5MB limit for this project
+
 # Source before using Claude
 source ./project-claude-setup.sh
 claude "analyze this project"
 ```
-
-**What you CANNOT configure** (hardcoded):
-- File count threshold (always 3 files)
-- Token limit (always 50k tokens)
-- File size limits (always 10MB max)
 
 ### Debug Mode
 
