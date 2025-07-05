@@ -48,9 +48,9 @@ check_requirements() {
     local claude_location=""
     
     # First check if claude command exists (handles PATH and aliases)
-    if which claude &> /dev/null; then
+    if command -v claude &> /dev/null; then
         claude_found=true
-        claude_location=$(which claude)
+        claude_location=$(command -v claude)
     # Check common installation locations
     elif [ -x "$HOME/.claude/local/claude" ]; then
         claude_found=true
