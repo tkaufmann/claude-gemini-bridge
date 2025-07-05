@@ -211,11 +211,11 @@ call_gemini() {
     fi
     
     if command -v "$timeout_cmd" >/dev/null 2>&1; then
-        gemini_result=$("$timeout_cmd" "$GEMINI_TIMEOUT" gemini $processed_files -p "$gemini_prompt" 2>&1)
+        gemini_result=$("$timeout_cmd" "$GEMINI_TIMEOUT" gemini -p "$gemini_prompt" $processed_files 2>&1)
         gemini_exit_code=$?
     else
         # Fallback without timeout
-        gemini_result=$(gemini $processed_files -p "$gemini_prompt" 2>&1)
+        gemini_result=$(gemini -p "$gemini_prompt" $processed_files 2>&1)
         gemini_exit_code=$?
     fi
     
