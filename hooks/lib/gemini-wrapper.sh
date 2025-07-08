@@ -191,11 +191,20 @@ call_gemini() {
         return 1
     fi
     
-    # Create prompt
+    # Create the base prompt
     local gemini_prompt=$(create_gemini_prompt "$tool_type" "$original_prompt" "$file_count")
     
+    # --- START OF THE FIX ---
+    # Append the file references to the prompt string using @ notation
+    local final_prompt="$gemini_prompt"
+    for file in $processed_files; do
+        # Add a space and then the @-prefixed, quoted file path
+        final_prompt+=" @\"$file\""
+    done
+    # --- END OF THE FIX ---
+
     debug_log 2 "Processing $file_count files with Gemini"
-    debug_log 3 "Prompt: $gemini_prompt"
+    debug_log 3 "Final Prompt: $final_prompt"
     
     # Rate limiting
     enforce_rate_limit
@@ -211,11 +220,13 @@ call_gemini() {
     fi
     
     if command -v "$timeout_cmd" >/dev/null 2>&1; then
-        gemini_result=$("$timeout_cmd" "$GEMINI_TIMEOUT" gemini -p "$gemini_prompt" $processed_files 2>&1)
+        # --- CORRECTED GEMINI CALL ---
+        # Notice $processed_files is removed from the end.
+        gemini_result=$("$timeout_cmd" "$GEMINI_TIMEOUT" gemini -p "$final_prompt" 2>&1)
         gemini_exit_code=$?
     else
         # Fallback without timeout
-        gemini_result=$(gemini -p "$gemini_prompt" $processed_files 2>&1)
+        gemini_result=$(gemini -p "$final_prompt" 2>&1)
         gemini_exit_code=$?
     fi
     
@@ -230,6 +241,7 @@ call_gemini() {
         return 0
     else
         error_log "Gemini call failed (exit code: $gemini_exit_code)"
+        # The result variable now contains the error message from stderr
         debug_log 2 "Gemini error output: $gemini_result"
         echo "Gemini analysis failed. Please check the logs."
         return 1
