@@ -210,12 +210,24 @@ call_gemini() {
         timeout_cmd="gtimeout"
     fi
     
+    # Prepare file contents for STDIN
+    local file_contents=""
+    for file in $processed_files; do
+        if [ -f "$file" ]; then
+            file_contents="${file_contents}=== File: $file ===\n\n"
+            file_contents="${file_contents}$(cat "$file" 2>/dev/null)\n\n"
+        fi
+    done
+    
+    # Debug: Show exact command being executed
+    debug_log 3 "Executing: echo [file contents] | gemini -p \"$gemini_prompt\""
+    
     if command -v "$timeout_cmd" >/dev/null 2>&1; then
-        gemini_result=$("$timeout_cmd" "$GEMINI_TIMEOUT" gemini -p "$gemini_prompt" $processed_files 2>&1)
+        gemini_result=$(echo -e "$file_contents" | "$timeout_cmd" "$GEMINI_TIMEOUT" gemini -p "$gemini_prompt" 2>&1)
         gemini_exit_code=$?
     else
         # Fallback without timeout
-        gemini_result=$(gemini -p "$gemini_prompt" $processed_files 2>&1)
+        gemini_result=$(echo -e "$file_contents" | gemini -p "$gemini_prompt" 2>&1)
         gemini_exit_code=$?
     fi
     
