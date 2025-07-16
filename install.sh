@@ -124,7 +124,21 @@ configure_claude_hooks() {
     
     # Our hook configuration
     local hook_command="$SCRIPT_DIR/hooks/gemini-bridge.sh"
-    local hook_matcher="Read|Grep|Glob|Task"
+    
+    # Ask user which tools to intercept
+    echo ""
+    echo "Which tools should delegate to Gemini?"
+    echo "Available options:"
+    echo "  Read   - File reading operations" 
+    echo "  Grep   - Search operations"
+    echo "  Glob   - File pattern matching"
+    echo "  Task   - Complex analysis tasks (recommended)"
+    echo ""
+    echo "Enter tools separated by '|' (e.g., 'Task|Grep' or 'Read|Grep|Glob|Task')"
+    read -p "Tools to intercept [Read|Grep|Glob|Task]: " user_tools
+    
+    local hook_matcher="${user_tools:-Read|Grep|Glob|Task}"
+    log "info" "Configuring hooks for tools: $hook_matcher"
     
     # Check for any existing Claude-Gemini Bridge installation
     if [ -f "$CLAUDE_SETTINGS_FILE" ]; then

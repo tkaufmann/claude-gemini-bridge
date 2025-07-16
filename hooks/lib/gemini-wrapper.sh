@@ -97,22 +97,28 @@ create_gemini_prompt() {
     
     case "$tool_type" in
         "Read")
-            echo "Analyze this file and provide a concise summary. Focus on purpose, main functions and important details:"
+            echo "You are assisting another LLM with file analysis. The user requested to read this file, but it's large enough that I'm helping out. Please analyze this file and provide a concise summary focusing on purpose, main functions, and important details:"
             ;;
         "Glob"|"Grep")
-            echo "Analyze these $file_count files and create a structured overview. Group similar files and explain the purpose of each group:"
+            echo "You are assisting another LLM with multi-file analysis. The user is searching across $file_count files. Please analyze these files and create a structured overview, grouping similar files and explaining the purpose of each group:"
             ;;
         "Task")
             if [[ "$original_prompt" =~ (search|find|suche|finde) ]]; then
-                echo "Search the provided files for the specified criteria. Provide a structured list of findings with context: $original_prompt"
+                echo "You are assisting another LLM with a complex search task. The original request was: $original_prompt
+
+Please search the provided files for the specified criteria and provide a structured list of findings with context:"
             elif [[ "$original_prompt" =~ (analyze|analysiere|verstehe) ]]; then
-                echo "Perform a detailed code analysis: $original_prompt"
+                echo "You are assisting another LLM with a complex analysis task. The original request was: $original_prompt
+
+Please perform a detailed analysis of the provided files:"
             else
-                echo "Process the following task with the provided files: $original_prompt"
+                echo "You are assisting another LLM with a complex analysis task. The original request was: $original_prompt
+
+Please process this task with the provided files and give a comprehensive response:"
             fi
             ;;
         *)
-            echo "Analyze the provided files and provide a helpful summary."
+            echo "You are assisting another LLM with file analysis. Please analyze the provided files and provide a helpful summary."
             ;;
     esac
 }

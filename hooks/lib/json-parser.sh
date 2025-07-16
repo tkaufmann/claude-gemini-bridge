@@ -85,8 +85,30 @@ create_hook_response() {
         "replace"|"block_with_result")
             # Block tool execution and provide Gemini result
             if [ -n "$result" ]; then
-                jq -n --arg reason "${reason:-Delegated to Gemini for large-scale analysis}" --arg result "$result" \
-                    '{"decision": "block", "reason": $reason, "result": $result}'
+                # Extract the actual content from the Gemini response
+                local gemini_content=$(echo "$result" | jq -r '.content // empty' 2>/dev/null)
+                if [ -n "$gemini_content" ]; then
+                    # Extract metadata for better context
+                    local tool_name=$(echo "$result" | jq -r '.metadata.original_tool // "unknown"' 2>/dev/null)
+                    local file_count=$(echo "$result" | jq -r '.metadata.file_count // 0' 2>/dev/null)
+                    
+                    # Create a friendly introduction
+                    local intro_text="🤖 Gemini Assistant here! I've analyzed this content for you since it exceeded your optimal processing size.
+
+Tool: ${tool_name}
+Files analyzed: ${file_count}
+───────────────────────────────────────
+
+"
+                    
+                    # Put Gemini's response with friendly intro in the reason field
+                    jq -n --arg reason "${intro_text}${gemini_content}" \
+                        '{"decision": "block", "reason": $reason}'
+                else
+                    # Fallback if content extraction fails
+                    jq -n --arg reason "${reason:-Delegated to Gemini for large-scale analysis}" \
+                        '{"decision": "block", "reason": $reason}'
+                fi
             else
                 jq -n --arg reason "${reason:-No result provided}" \
                     '{"decision": "block", "reason": $reason}'
