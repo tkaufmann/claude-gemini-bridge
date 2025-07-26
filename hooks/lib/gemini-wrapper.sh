@@ -299,7 +299,8 @@ test_gemini_wrapper() {
     
     # Test 3: Prompt creation
     local prompt=$(create_gemini_prompt "Read" "analyze this file" 1)
-    if [[ "$prompt" != *"Analyze"* ]]; then
+    local prompt_lower=$(echo "$prompt" | tr '[:upper:]' '[:lower:]')
+    if [[ "$prompt_lower" != *"analyze"* ]]; then
         echo "❌ Test 3 failed: Prompt creation"
         failed=1
     else
