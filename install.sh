@@ -51,7 +51,7 @@ check_requirements() {
     
     # Gemini CLI
     if ! command -v gemini &> /dev/null; then
-        error_exit "Gemini CLI not found. Visit: https://github.com/google/generative-ai-cli"
+        error_exit "Gemini CLI not found. Visit: https://github.com/google-gemini/gemini-cli"
     fi
     log "debug" "Gemini CLI found: $(which gemini)"
     
