@@ -111,7 +111,8 @@ end_timer() {
     if [ -f "$timer_file" ]; then
         local start_time=$(cat "$timer_file")
         local end_time=$(date +%s.%N)
-        local duration=$(echo "$end_time - $start_time" | bc 2>/dev/null || echo "0")
+        # Use awk instead of bc for better portability
+        local duration=$(awk -v e="$end_time" -v s="$start_time" 'BEGIN {printf "%.3f", e-s}' 2>/dev/null || echo "0")
         
         debug_log 2 "Timer finished: $timer_name took ${duration}s"
         rm -f "$timer_file"
